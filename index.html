@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Connection Battle</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="icon" href="./assets/favicon.png">
+  </head>
+
+  <body>
+    <div class="game-container">
+        <header>
+            <h1>🎲 Number Battle 🎲</h1>
+        </header>
+
+        <div class="rules">
+            <h3>📜 Rules:</h3>
+            <ul>
+                <li><strong>Match Same:</strong> 1pt per match (5+5 via path)</li>
+                <li><strong>Make Ten:</strong> 2pts per pair (3+7 via path)</li>
+                <li><strong>Sequence:</strong> 0→1→2→3 or 8→9→0→1 = pts</li>
+                <li><strong>Sequences loop!</strong> 9→0→1 works!</li>
+                <li><strong>All score in one turn!</strong></li>
+                <li><strong>Bonus:</strong> +1pt per owned cell at end</li>
+            </ul>
+        </div>
+
+        <div class="game-layout">
+            <div class="left-panel">
+                <div class="score-board">
+                    <div class="score-card player">
+                        <h3>🟢 YOU</h3>
+                        <div class="score" id="playerScore">0</div>
+                    </div>
+                    <div class="score-card ai">
+                        <h3>🔴 AI</h3>
+                        <div class="score" id="aiScore">0</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button onclick="game.newGame()">🔄 New Game</button>
+                    <button onclick="showSettings()" class="secondary">⚙️ Settings</button>
+                    <button onclick="showStats()" class="info">📊 Statistics</button>
+                </div>
+            </div>
+
+            <div class="center-panel">
+                <div class="message" id="message">Drag your card to an empty cell!</div>
+
+                <div class="map-container">
+                    <div class="map-wrapper">
+                        <svg class="connections-svg" id="connectionsSvg"></svg>
+                        <div class="map-grid size-5" id="mapGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="player-hand-area" id="playerHandArea">
+                    <h3>Your Current Card</h3>
+                    <div class="current-card-container">
+                        <div class="current-card" id="currentCard" draggable="true">5</div>
+                    </div>
+                </div>
+
+                <div class="powerups">
+                    <button class="powerup-btn" id="skipAiBtn" onclick="game.useSkipAI()">
+                        ⏭️ Skip AI Turn <span class="powerup-badge" id="skipAiCount">1</span>
+                    </button>
+                    <button class="powerup-btn" id="replaceCardBtn" onclick="game.useReplaceCard()">
+                        🔄 Replace Card <span class="powerup-badge" id="replaceCardCount">2</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h2>⚙️ Settings</h2>
+            
+            <div class="setting-group">
+                <label for="difficultySelect">AI Difficulty:</label>
+                <select id="difficultySelect" onchange="game.changeDifficulty(this.value)">
+                    <option value="0.2">Novice</option>
+                    <option value="0.3">Beginner</option>
+                    <option value="0.4" selected>Intermediate</option>
+                    <option value="0.5">Skilled</option>
+                    <option value="0.6">Advanced</option>
+                    <option value="0.7">Expert</option>
+                    <option value="0.8">Pro</option>
+                    <option value="0.9">Master</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="boardSizeSelect">Board Size:</label>
+                <select id="boardSizeSelect" onchange="changeBoardSize(this.value)">
+                    <option value="3">3x3 (Quick)</option>
+                    <option value="4">4x4 (Fast)</option>
+                    <option value="5" selected>5x5 (Classic)</option>
+                    <option value="6">6x6 (Extended)</option>
+                    <option value="7" id="board7x7Option">7x7 (Epic) 🔒 Requires 10 wins</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="gamemodeSelect">Game Mode:</label>
+                <select id="gamemodeSelect" onchange="changeGameMode(this.value)">
+                    <option value="classic" selected>Classic (Take turns)</option>
+                    <option value="nobonus">No Bonus (No end bonus points)</option>
+                    <option value="survival">Survival (No powerups)</option>
+                    <option value="blitz">Blitz (Race mode!)</option>
+                </select>
+            </div>
+
+            <h3>🎨 Themes</h3>
+            
+            <div class="theme-section">
+                <div class="theme-section-title">Available Themes</div>
+                <div class="theme-selector">
+                    <div class="theme-option default active" onclick="changeTheme('default')">
+                        Default
+                    </div>
+                    <div class="theme-option dark" onclick="changeTheme('dark')">
+                        Dark
+                    </div>
+                    <div class="theme-option nature" onclick="changeTheme('nature')">
+                        Nature
+                    </div>
+                    <div class="theme-option sunset" onclick="changeTheme('sunset')">
+                        Sunset
+                    </div>
+                    <div class="theme-option ocean" onclick="changeTheme('ocean')">
+                        Ocean
+                    </div>
+                </div>
+            </div>
+
+            <div class="theme-section">
+                <div class="theme-section-title">Unlockable Themes</div>
+                <div class="theme-selector" id="unlockedThemesContainer">
+                    <div class="theme-option fire locked" data-wins-required="3" onclick="changeTheme('fire')">
+                        Fire
+                        <div class="unlock-text">3 wins</div>
+                    </div>
+                    <div class="theme-option midnight locked" data-wins-required="5" onclick="changeTheme('midnight')">
+                        Midnight
+                        <div class="unlock-text">5 wins</div>
+                    </div>
+                    <div class="theme-option royal locked" data-wins-required="10" onclick="changeTheme('royal')">
+                        Royal
+                        <div class="unlock-text">10 wins</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group" style="margin-top: 20px;">
+                <label>
+                    <input type="checkbox" id="sfxToggle" onchange="game.toggleSFX(this.checked)" checked>
+                    Enable Sound Effects
+                </label>
+            </div>
+
+            <div class="modal-buttons">
+                <button onclick="closeSettings()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Modal -->
+    <div class="modal" id="statsModal">
+        <div class="modal-content">
+            <h2>📊 Statistics</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Wins</div>
+                    <div class="stat-value" id="winsCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Losses</div>
+                    <div class="stat-value" id="lossesCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Ties</div>
+                    <div class="stat-value" id="tiesCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">High Score</div>
+                    <div class="stat-value" id="highScore">0</div>
+                </div>
+            </div>
+
+            <h3>Win Rate</h3>
+            <div class="stat-box">
+                <div class="stat-value" id="winRate">0%</div>
+            </div>
+
+            <div class="modal-buttons">
+                <button onclick="resetStats()" style="background: linear-gradient(135deg, #f44336 0%, #e53935 100%);">Reset Stats</button>
+                <button onclick="closeStats()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="game-over hidden" id="gameOver">
+        <h2 id="winnerText">Game Over!</h2>
+        <div class="final-score">
+            <p>Your Score: <strong id="finalPlayerScore">0</strong></p>
+            <p>AI Score: <strong id="finalAIScore">0</strong></p>
+        </div>
+        <div id="unlockMessage" style="margin: 15px 0; font-weight: bold; color: #FF9800;"></div>
+        <button onclick="game.newGame()">Play Again</button>
+    </div>
+    <script src="./script.js"></script>
+  </body>
+</html>
