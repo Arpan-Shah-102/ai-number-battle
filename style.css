@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -42,6 +44,27 @@ body.royal-theme {
   background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%);
 }
 
+body.cosmic-theme {
+  background: linear-gradient(135deg, #141E30 0%, #243B55 100%);
+}
+
+body.lava-theme {
+  background: linear-gradient(135deg, #C33764 0%, #1D2671 100%);
+}
+
+body.emerald-theme {
+  background: linear-gradient(135deg, #348F50 0%, #56B4D3 100%);
+}
+
+/* Icon Pack Styles */
+.icon-font .map-cell,
+.icon-font .current-card,
+.icon-font .floating-card {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
 .game-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -58,6 +81,19 @@ h1 {
   margin-bottom: 10px;
 }
 
+.header-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.header-controls button {
+  padding: 8px 16px;
+  font-size: 0.9em;
+}
+
 .rules {
   background: rgba(255,255,255,0.1);
   padding: 10px;
@@ -65,6 +101,11 @@ h1 {
   margin-bottom: 15px;
   backdrop-filter: blur(10px);
   font-size: clamp(0.8em, 2vw, 1em);
+  display: none;
+}
+
+.rules.show {
+  display: block;
 }
 
 .rules h3 {
@@ -229,6 +270,10 @@ h1 {
 
 .map-grid.size-7 {
   grid-template-columns: repeat(7, 1fr);
+}
+
+.map-grid.size-8 {
+  grid-template-columns: repeat(8, 1fr);
 }
 
 .map-cell {
@@ -448,6 +493,20 @@ h1 {
   opacity: 0.5;
 }
 
+.next-card-preview {
+  background: rgba(255,255,255,0.2);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #4CAF50;
+  display: none;
+}
+
+.next-card-preview.show {
+  display: block;
+}
+
 .powerups {
   display: flex;
   justify-content: center;
@@ -534,6 +593,10 @@ button.info {
   background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
 }
 
+button.warning {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+}
+
 .message {
   text-align: center;
   padding: 12px;
@@ -578,6 +641,11 @@ button.info {
   max-height: 90vh;
   overflow-y: auto;
   animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-content.large {
+  width: 800px;
+  max-width: 95%;
 }
 
 @keyframes modalSlideIn {
@@ -629,18 +697,18 @@ button.info {
   color: #999;
 }
 
-.theme-selector {
+.theme-selector, .icon-selector {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 10px;
   margin-top: 10px;
 }
 
-.theme-section {
+.theme-section, .icon-section {
   margin-bottom: 20px;
 }
 
-.theme-section-title {
+.theme-section-title, .icon-section-title {
   font-size: 1em;
   font-weight: bold;
   color: #555;
@@ -649,7 +717,7 @@ button.info {
   border-bottom: 2px solid #ddd;
 }
 
-.theme-option {
+.theme-option, .icon-option {
   padding: 15px;
   border-radius: 10px;
   cursor: pointer;
@@ -660,27 +728,38 @@ button.info {
   position: relative;
 }
 
-.theme-option:hover:not(.locked) {
+.theme-option:hover:not(.locked), .icon-option:hover:not(.locked) {
   transform: scale(1.05);
 }
 
-.theme-option.active {
+.theme-option.active, .icon-option.active {
   border-color: #667eea;
   box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
 }
 
-.theme-option.locked {
+.theme-option.locked, .icon-option.locked {
   opacity: 0.5;
   cursor: not-allowed;
   filter: grayscale(50%);
 }
 
-.theme-option.locked::after {
+.theme-option.locked::after, .icon-option.locked::after {
   content: '🔒';
   position: absolute;
   top: 5px;
   right: 5px;
   font-size: 1.2em;
+}
+
+.icon-option {
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+  color: #333;
+  font-size: 2em;
+}
+
+.icon-option .icon-name {
+  font-size: 0.4em;
+  margin-top: 5px;
 }
 
 .theme-option.default {
@@ -720,6 +799,21 @@ button.info {
 
 .theme-option.royal {
   background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%);
+  color: white;
+}
+
+.theme-option.cosmic {
+  background: linear-gradient(135deg, #141E30 0%, #243B55 100%);
+  color: white;
+}
+
+.theme-option.lava {
+  background: linear-gradient(135deg, #C33764 0%, #1D2671 100%);
+  color: white;
+}
+
+.theme-option.emerald {
+  background: linear-gradient(135deg, #348F50 0%, #56B4D3 100%);
   color: white;
 }
 
@@ -955,6 +1049,48 @@ button.info {
 
 .map-cell.scoring {
   animation: ripple 0.6s ease-out;
+}
+
+/* Tutorial specific styles */
+.tutorial-instruction {
+  background: rgba(255, 215, 0, 0.95);
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  color: #333;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: center;
+  border: 3px solid #FFA500;
+  box-shadow: 0 5px 15px rgba(255, 165, 0, 0.5);
+}
+
+.tutorial-highlight {
+  animation: tutorialGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes tutorialGlow {
+  0%, 100% {
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+  }
+  50% {
+      box-shadow: 0 0 30px rgba(255, 215, 0, 1);
+  }
+}
+
+.tutorial-next-btn {
+  margin-left: 10px;
+  display: inline-block;
+}
+.tutorial-next-btn:disabled {
+  background: linear-gradient(135deg, #9E9E9E 0%, #757575 100%) !important;
+  cursor: not-allowed !important;
+  opacity: 0.5;
+}
+
+.tutorial-next-btn:disabled:hover {
+  transform: none !important;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2) !important;
 }
 
 @media (max-width: 767px) {
