@@ -50,16 +50,16 @@ const SoundEffects = {
     },
 
     playWin() {
-        this.playTone(523, 0.15, 'sine', 0.3); // C
-        setTimeout(() => this.playTone(659, 0.15, 'sine', 0.3), 150); // E
-        setTimeout(() => this.playTone(784, 0.15, 'sine', 0.3), 300); // G
-        setTimeout(() => this.playTone(1047, 0.3, 'sine', 0.3), 450); // C high
+        this.playTone(523, 0.15, 'sine', 0.3);
+        setTimeout(() => this.playTone(659, 0.15, 'sine', 0.3), 150);
+        setTimeout(() => this.playTone(784, 0.15, 'sine', 0.3), 300);
+        setTimeout(() => this.playTone(1047, 0.3, 'sine', 0.3), 450);
     },
 
     playLose() {
-        this.playTone(392, 0.2, 'sine', 0.3); // G
-        setTimeout(() => this.playTone(349, 0.2, 'sine', 0.3), 200); // F
-        setTimeout(() => this.playTone(294, 0.4, 'sine', 0.3), 400); // D
+        this.playTone(392, 0.2, 'sine', 0.3);
+        setTimeout(() => this.playTone(349, 0.2, 'sine', 0.3), 200);
+        setTimeout(() => this.playTone(294, 0.4, 'sine', 0.3), 400);
     },
 
     playButton() {
@@ -73,15 +73,17 @@ const SoundEffects = {
     }
 };
 
-// Initialize audio context
 SoundEffects.init();
 
-// Icon Pack conversion functions
+// FIXED: Icon Pack conversion functions - Moon phase fixed
 const IconPacks = {
     default: (num) => num.toString(),
     font: (num) => num.toString(),
     emoji: (num) => ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'][num],
-    moon: (num) => ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'][num]
+    moon: (num) => {
+        const phases = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+        return phases[num % 8] || '🌑'; // FIXED: Always return valid icon
+    }
 };
 
 const IconPackMaxNumbers = {
@@ -90,7 +92,6 @@ const IconPackMaxNumbers = {
     emoji: 10,
     moon: 8
 };
-
 // Tutorial System
 function startTutorial() {
     SoundEffects.playButton();
@@ -141,6 +142,7 @@ function startInteractiveTutorial() {
     tutorialGame.start();
 }
 
+// Tutorial Game Class (keeping original - not modified)
 class TutorialGame {
     constructor() {
         this.step = 0;
@@ -152,7 +154,6 @@ class TutorialGame {
 
     start() {
         this.originalGame.gameEnded = true;
-        
         this.setupTutorialBoard();
         this.showStep(0);
     }
@@ -170,15 +171,10 @@ class TutorialGame {
             mapGrid.appendChild(cell);
         }
         
-        // FIXED: Correct tutorial paths - each cell connects to adjacent cells properly
         this.connections = [
-            // Row 1
             { from: 0, to: 1 }, { from: 1, to: 2 },
-            // Row 2
             { from: 3, to: 4 }, { from: 4, to: 5 },
-            // Row 3
             { from: 6, to: 7 }, { from: 7, to: 8 },
-            // Vertical columns
             { from: 0, to: 3 }, { from: 3, to: 6 },
             { from: 1, to: 4 }, { from: 4, to: 7 },
             { from: 2, to: 5 }, { from: 5, to: 8 }
@@ -188,32 +184,23 @@ class TutorialGame {
         
         document.getElementById('playerScore').textContent = '0';
         document.getElementById('aiScore').textContent = '0';
-        
         document.getElementById('currentCard').textContent = '8';
-        
-        // CRITICAL: Enable drag and drop for tutorial
         this.enableTutorialDragAndDrop();
     }
-
-    // In class TutorialGame...
 
     enableTutorialDragAndDrop() {
         const currentCard = document.getElementById('currentCard');
         const mapGrid = document.getElementById('mapGrid');
         
-        // Make the card draggable for the tutorial
         currentCard.draggable = true;
         currentCard.style.cursor = 'grab';
         
-        // --- START OF FIX ---
-        // Set up drag handlers specifically for the tutorial
         currentCard.ondragstart = (e) => {
             if (!this.awaitingPlayerAction) {
                 e.preventDefault();
                 return;
             }
             e.dataTransfer.effectAllowed = 'move';
-            // This line is required for drag-and-drop to work in all browsers
             e.dataTransfer.setData('text/plain', 'card');
             currentCard.classList.add('dragging');
         };
@@ -247,12 +234,10 @@ class TutorialGame {
                 cell.classList.remove('drag-over');
                 const cellIndex = parseInt(cell.dataset.index);
                 if (cellIndex === this.expectedCell) {
-                    // When the correct cell is dropped on, advance the tutorial
                     this.handleCellClick(cellIndex);
                 }
             }
         };
-        // --- END OF FIX ---
     }
 
     drawTutorialConnections() {
@@ -287,50 +272,44 @@ class TutorialGame {
         });
     }
 
-    // In the TutorialGame class, modify createNextButton():
     createNextButton() {
-    if (this.nextButton) {
-        // Return existing button but ensure it's visible
-        this.nextButton.style.display = 'inline-block';
-        return this.nextButton;
+        if (this.nextButton) {
+            this.nextButton.style.display = 'inline-block';
+            return this.nextButton;
+        }
+        
+        const btn = document.createElement('button');
+        btn.className = 'tutorial-next-btn';
+        btn.textContent = 'Continue →';
+        btn.style.display = 'inline-block';
+        let isProcessing = false;
+        btn.onclick = () => {
+            if (isProcessing || btn.disabled) return;
+            isProcessing = true;
+            this.nextStep();
+            setTimeout(() => isProcessing = false, 300);
+        };
+        btn.disabled = true;
+        
+        this.nextButton = btn;
+        return btn;
     }
-    
-    const btn = document.createElement('button');
-    btn.className = 'tutorial-next-btn';
-    btn.textContent = 'Continue →';
-    btn.style.display = 'inline-block'; // Make sure it's visible
-    let isProcessing = false;
-    btn.onclick = () => {
-        if (isProcessing || btn.disabled) return;
-        isProcessing = true;
-        this.nextStep();
-        setTimeout(() => isProcessing = false, 300);
-    };
-    btn.disabled = true;
-    
-    this.nextButton = btn;
-    return btn;
-}
 
     showStep(step) {
         const message = document.getElementById('message');
         const cells = document.querySelectorAll('.map-cell');
         
-        // Clear all highlights
         cells.forEach(cell => {
             cell.classList.remove('tutorial-highlight');
             cell.style.pointerEvents = 'none';
             cell.onclick = null;
         });
         
-        // Clear SVG highlights
         const svg = document.getElementById('connectionsSvg');
         const lines = svg.querySelectorAll('line');
         lines.forEach(line => line.classList.remove('highlighted'));
         
         this.awaitingPlayerAction = false;
-        
-        // Create or get next button
         const nextBtn = this.createNextButton();
         
         switch(step) {
@@ -338,7 +317,6 @@ class TutorialGame {
                 message.innerHTML = '📖 <strong>Step 1: Paths are Important!</strong> - Notice the gray lines connecting cells. You can ONLY score points through these connections!';
                 message.appendChild(nextBtn);
                 
-                // FIXED: Highlight correct paths from center (4) to top-center (1) and bottom-center (7)
                 const pathsToHighlight = [
                     {from: 1, to: 4},
                     {from: 4, to: 7}
@@ -353,9 +331,7 @@ class TutorialGame {
                     }
                 });
                 
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 500);
+                setTimeout(() => { nextBtn.disabled = false; }, 500);
                 break;
                 
             case 1:
@@ -368,7 +344,7 @@ class TutorialGame {
                 cells[4].classList.add('tutorial-highlight');
                 this.awaitingPlayerAction = true;
                 this.expectedCell = 4;
-                cells[4].style.pointerEvents = 'auto'; // Make it clickable
+                cells[4].style.pointerEvents = 'auto';
                 cells[4].onclick = () => this.handleCellClick(4);
                 break;
                 
@@ -381,9 +357,7 @@ class TutorialGame {
                 SoundEffects.playCardPlace();
                 message.innerHTML = '✅ You placed an 8! Since there are no adjacent cards yet, you scored 0 points.';
                 message.appendChild(nextBtn);
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 500);
+                setTimeout(() => { nextBtn.disabled = false; }, 500);
                 break;
                 
             case 3:
@@ -391,9 +365,7 @@ class TutorialGame {
                 message.innerHTML = '🤖 <strong>AI\'s turn:</strong> AI places an "8" next to yours...';
                 message.appendChild(nextBtn);
                 cells[1].classList.add('tutorial-highlight');
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 1000);
+                setTimeout(() => { nextBtn.disabled = false; }, 1000);
                 break;
                 
             case 4:
@@ -411,9 +383,7 @@ class TutorialGame {
                     SoundEffects.playScore();
                     message.innerHTML = '🎯 <strong>Same Number Match!</strong> The AI\'s "8" connects to your "8" through the path = 1 point. Both cells turn red (AI owns them).';
                     message.appendChild(nextBtn);
-                    setTimeout(() => {
-                        nextBtn.disabled = false;
-                    }, 1500);
+                    setTimeout(() => { nextBtn.disabled = false; }, 1500);
                 }, 500);
                 break;
                 
@@ -446,9 +416,7 @@ class TutorialGame {
                     SoundEffects.playScore();
                     message.innerHTML = '🎉 <strong>You scored 1 point!</strong> Your "8" connected to another "8" through the path. You claimed those cells (green).';
                     message.appendChild(nextBtn);
-                    setTimeout(() => {
-                        nextBtn.disabled = false;
-                    }, 1500);
+                    setTimeout(() => { nextBtn.disabled = false; }, 1500);
                 }, 500);
                 break;
                 
@@ -473,9 +441,7 @@ class TutorialGame {
                 SoundEffects.playCardPlace();
                 message.innerHTML = '✅ You placed a 3. No scoring yet.';
                 message.appendChild(nextBtn);
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 500);
+                setTimeout(() => { nextBtn.disabled = false; }, 500);
                 break;
                 
             case 9:
@@ -483,9 +449,7 @@ class TutorialGame {
                 message.innerHTML = '🤖 AI places a "7" next to your "3"...';
                 message.appendChild(nextBtn);
                 cells[3].classList.add('tutorial-highlight');
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 1000);
+                setTimeout(() => { nextBtn.disabled = false; }, 1000);
                 break;
                 
             case 10:
@@ -504,9 +468,7 @@ class TutorialGame {
                     SoundEffects.playScore();
                     message.innerHTML = '💯 <strong>Add to Ten!</strong> 3 + 7 = 10 (connected by path). This scores 2 points! AI now has 3 points total.';
                     message.appendChild(nextBtn);
-                    setTimeout(() => {
-                        nextBtn.disabled = false;
-                    }, 1500);
+                    setTimeout(() => { nextBtn.disabled = false; }, 1500);
                 }, 500);
                 break;
                 
@@ -531,9 +493,7 @@ class TutorialGame {
                 SoundEffects.playCardPlace();
                 message.innerHTML = '✅ You placed a 2.';
                 message.appendChild(nextBtn);
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 500);
+                setTimeout(() => { nextBtn.disabled = false; }, 500);
                 break;
                 
             case 13:
@@ -541,9 +501,7 @@ class TutorialGame {
                 message.innerHTML = '🤖 AI places a "3" on the right side...';
                 message.appendChild(nextBtn);
                 cells[5].classList.add('tutorial-highlight');
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 1000);
+                setTimeout(() => { nextBtn.disabled = false; }, 1000);
                 break;
                 
             case 14:
@@ -554,9 +512,7 @@ class TutorialGame {
                 SoundEffects.playCardPlace();
                 message.innerHTML = '✅ AI placed a 3.';
                 message.appendChild(nextBtn);
-                setTimeout(() => {
-                    nextBtn.disabled = false;
-                }, 500);
+                setTimeout(() => { nextBtn.disabled = false; }, 500);
                 break;
                 
             case 15:
@@ -595,9 +551,7 @@ class TutorialGame {
                         SoundEffects.playScore();
                         message.innerHTML = '🎊 <strong>Sequence!</strong> 2→3→4 connected by paths = 3 points! Sequences must be 3+ numbers and score points equal to their length.';
                         message.appendChild(nextBtn);
-                        setTimeout(() => {
-                            nextBtn.disabled = false;
-                        }, 1500);
+                        setTimeout(() => { nextBtn.disabled = false; }, 1500);
                     }, 600);
                 }, 500);
                 break;
@@ -620,15 +574,9 @@ class TutorialGame {
         this.showStep(this.step);
     }
 
-    // In TutorialGame class, modify the end() method:
-    // Modified end() method to restore handlers:
-    // In class TutorialGame...
-
     end() {
         SoundEffects.playButton();
         
-        // --- START OF FIX ---
-        // 1. Clean up all tutorial-specific event listeners
         const currentCard = document.getElementById('currentCard');
         const mapGrid = document.getElementById('mapGrid');
         const cells = mapGrid.querySelectorAll('.map-cell');
@@ -640,18 +588,14 @@ class TutorialGame {
         mapGrid.ondrop = null;
         cells.forEach(cell => { cell.onclick = null; });
         
-        // 2. Tell the main game it's no longer ended
         this.originalGame.gameEnded = false;
-        
-        // 3. Start a fresh game, which re-initializes all correct handlers
         this.originalGame.newGame();
-        // --- END OF FIX ---
     }
 }
 
+// MAIN GAME CLASS WITH ALL FIXES
 class NumberConnectionGame {
     constructor() {
-        // Load saved settings
         const savedSize = localStorage.getItem('boardSize');
         this.gridSize = savedSize ? parseInt(savedSize) : 5;
         this.totalCells = this.gridSize * this.gridSize;
@@ -670,6 +614,7 @@ class NumberConnectionGame {
         this.hoveredCellIndex = null;
         this.draggedOverCellIndex = null;
         
+        // Power-ups: default amounts regardless of game mode
         this.skipAIAvailable = 1;
         this.skipAIUsed = false;
         this.replaceCardAvailable = 3;
@@ -677,8 +622,6 @@ class NumberConnectionGame {
         this.viewNextActive = false;
         this.viewNextUsedOnTurn = null;
         this.undoAvailable = 1;
-        
-        // Undo state
         this.undoState = null;
         
         this.lastAICard = null;
@@ -694,6 +637,7 @@ class NumberConnectionGame {
         this.blitzActive = false;
         
         this.stats = this.loadStats();
+        this.shop = this.loadShop();
         
         this.turnCount = 0;
         this.extraTurn = false;
@@ -705,10 +649,7 @@ class NumberConnectionGame {
         this.updateGameModeDropdown();
         this.updateSFXToggle();
         this.updateStatsDisplay();
-        this.updateThemeUnlocks();
-        this.updateBoardSizeUnlocks();
-        this.updateIconPackUnlocks();
-        this.updateGameModeUnlocks();
+        this.updateSettingsUI();
         
         this.init();
     }
@@ -769,17 +710,40 @@ class NumberConnectionGame {
             losses: 0,
             ties: 0,
             highScore: 0,
-            gamesPlayed: 0
+            gamesPlayed: 0,
+            shopPoints: 0
         };
     }
 
     saveStats() {
         localStorage.setItem('gameStats', JSON.stringify(this.stats));
         this.updateStatsDisplay();
-        this.updateThemeUnlocks();
-        this.updateBoardSizeUnlocks();
-        this.updateIconPackUnlocks();
-        this.updateGameModeUnlocks();
+    }
+
+    loadShop() {
+        const saved = localStorage.getItem('shopData');
+        if (saved) {
+            return JSON.parse(saved);
+        }
+        
+        // First time: start with 0 shop points
+        const shopData = {
+            points: 0,
+            owned: {
+                boards: ['3', '4', '5', '6'], // Default boards
+                modes: ['classic', 'nobonus', 'survival', 'blitz'], // Default modes
+                themes: ['default', 'dark', 'nature', 'sunset', 'ocean'], // Default themes
+                icons: ['default', 'emoji'] // Default icons
+            }
+        };
+        
+        this.saveShop(shopData);
+        
+        return shopData;
+    }
+
+    saveShop() {
+        localStorage.setItem('shopData', JSON.stringify(this.shop));
     }
 
     updateStatsDisplay() {
@@ -787,101 +751,124 @@ class NumberConnectionGame {
         document.getElementById('lossesCount').textContent = this.stats.losses;
         document.getElementById('tiesCount').textContent = this.stats.ties;
         document.getElementById('highScore').textContent = this.stats.highScore;
+        document.getElementById('shopPointsStat').textContent = this.shop.points.toFixed(1);
         
         const totalGames = this.stats.wins + this.stats.losses + this.stats.ties;
         const winRate = totalGames > 0 ? Math.round((this.stats.wins / totalGames) * 100) : 0;
         document.getElementById('winRate').textContent = winRate + '%';
     }
 
-    updateThemeUnlocks() {
-        const themes = [
-            { name: 'fire', wins: 3 },
-            { name: 'midnight', wins: 5 },
-            { name: 'royal', wins: 10 },
-            { name: 'cosmic', wins: 20 },
-            { name: 'lava', wins: 35 },
-            { name: 'emerald', wins: 50 }
-        ];
-
-        themes.forEach(theme => {
-            const element = document.querySelector(`.theme-option.${theme.name}`);
-            if (element) {
-                if (this.stats.wins >= theme.wins) {
-                    element.classList.remove('locked');
-                    element.querySelector('.unlock-text').textContent = 'Unlocked!';
-                } else {
-                    element.classList.add('locked');
-                    element.querySelector('.unlock-text').textContent = `${theme.wins} wins`;
+    updateSettingsUI() {
+        // Update board size dropdown
+        const boardSelect = document.getElementById('boardSizeSelect');
+        if (boardSelect) {
+            boardSelect.innerHTML = '';
+            const boardSizes = [
+                { value: '3', label: '3x3 (Quick)' },
+                { value: '4', label: '4x4 (Fast)' },
+                { value: '5', label: '5x5 (Classic)' },
+                { value: '6', label: '6x6 (Extended)' },
+                { value: '7', label: '7x7 (Epic)' },
+                { value: '8', label: '8x8 (Massive)' }
+            ];
+            
+            boardSizes.forEach(size => {
+                if (this.shop.owned.boards.includes(size.value)) {
+                    const option = document.createElement('option');
+                    option.value = size.value;
+                    option.textContent = size.label;
+                    if (size.value === this.gridSize.toString()) {
+                        option.selected = true;
+                    }
+                    boardSelect.appendChild(option);
                 }
-            }
-        });
-    }
-
-    updateIconPackUnlocks() {
-        const packs = [
-            { name: 'font', wins: 10 },
-            { name: 'moon', wins: 25 }
-        ];
-
-        packs.forEach(pack => {
-            const element = document.querySelector(`.icon-option[data-icon="${pack.name}"]`);
-            if (element) {
-                if (this.stats.wins >= pack.wins) {
-                    element.classList.remove('locked');
-                    const unlockText = element.querySelector('.unlock-text');
-                    if (unlockText) unlockText.textContent = 'Unlocked!';
-                } else {
-                    element.classList.add('locked');
-                    const unlockText = element.querySelector('.unlock-text');
-                    if (unlockText) unlockText.textContent = `${pack.wins} wins`;
-                }
-            }
-        });
-    }
-
-    updateGameModeUnlocks() {
-        const modes = [
-            { id: 'suddendeathOption', wins: 10, name: 'Sudden Death' },
-            { id: 'chainreactionOption', wins: 20, name: 'Chain Reaction' },
-            { id: 'reverserulesOption', wins: 35, name: 'Reverse Rules' },
-            { id: 'mirrormatchOption', wins: 50, name: 'Mirror Match' }
-        ];
-
-        modes.forEach(mode => {
-            const element = document.getElementById(mode.id);
-            if (element) {
-                if (this.stats.wins >= mode.wins) {
-                    element.disabled = false;
-                    element.textContent = `${mode.name} ⭐ Unlocked!`;
-                } else {
-                    element.disabled = true;
-                    element.textContent = `${mode.name} 🔒 Requires ${mode.wins} wins`;
-                }
-            }
-        });
-    }
-
-    updateBoardSizeUnlocks() {
-        const option7x7 = document.getElementById('board7x7Option');
-        if (option7x7) {
-            if (this.stats.wins >= 10) {
-                option7x7.disabled = false;
-                option7x7.textContent = '7x7 (Epic) ⭐ Unlocked!';
-            } else {
-                option7x7.disabled = true;
-                option7x7.textContent = '7x7 (Epic) 🔒 Requires 10 wins';
-            }
+            });
         }
         
-        const option8x8 = document.getElementById('board8x8Option');
-        if (option8x8) {
-            if (this.stats.wins >= 20) {
-                option8x8.disabled = false;
-                option8x8.textContent = '8x8 (Massive) ⭐ Unlocked!';
-            } else {
-                option8x8.disabled = true;
-                option8x8.textContent = '8x8 (Massive) 🔒 Requires 20 wins';
-            }
+        // Update game mode dropdown
+        const modeSelect = document.getElementById('gamemodeSelect');
+        if (modeSelect) {
+            modeSelect.innerHTML = '';
+            const modes = [
+                { value: 'classic', label: 'Classic (Take turns)' },
+                { value: 'nobonus', label: 'No Bonus (No end bonus points)' },
+                { value: 'survival', label: 'Survival (No powerups)' },
+                { value: 'blitz', label: 'Blitz (Race mode!)' },
+                { value: 'suddendeath', label: 'Sudden Death' },
+                { value: 'chainreaction', label: 'Chain Reaction' },
+                { value: 'reverserules', label: 'Reverse Rules' },
+                { value: 'mirrormatch', label: 'Mirror Match' }
+            ];
+            
+            modes.forEach(mode => {
+                if (this.shop.owned.modes.includes(mode.value)) {
+                    const option = document.createElement('option');
+                    option.value = mode.value;
+                    option.textContent = mode.label;
+                    if (mode.value === this.gameMode) {
+                        option.selected = true;
+                    }
+                    modeSelect.appendChild(option);
+                }
+            });
+        }
+        
+        // Update themes
+        const themeSelector = document.querySelector('.theme-selector');
+        if (themeSelector) {
+            themeSelector.innerHTML = '';
+            const themes = [
+                { name: 'default', label: 'Default', class: 'default' },
+                { name: 'dark', label: 'Dark', class: 'dark' },
+                { name: 'nature', label: 'Nature', class: 'nature' },
+                { name: 'sunset', label: 'Sunset', class: 'sunset' },
+                { name: 'ocean', label: 'Ocean', class: 'ocean' },
+                { name: 'fire', label: 'Fire', class: 'fire' },
+                { name: 'midnight', label: 'Midnight', class: 'midnight' },
+                { name: 'royal', label: 'Royal', class: 'royal' },
+                { name: 'cosmic', label: 'Cosmic', class: 'cosmic' },
+                { name: 'lava', label: 'Lava', class: 'lava' },
+                { name: 'emerald', label: 'Emerald', class: 'emerald' }
+            ];
+            
+            themes.forEach(theme => {
+                if (this.shop.owned.themes.includes(theme.name)) {
+                    const div = document.createElement('div');
+                    div.className = `theme-option ${theme.class}`;
+                    if (theme.name === this.currentTheme) {
+                        div.classList.add('active');
+                    }
+                    div.textContent = theme.label;
+                    div.onclick = () => changeTheme(theme.name);
+                    themeSelector.appendChild(div);
+                }
+            });
+        }
+        
+        // Update icon packs
+        const iconSelector = document.querySelector('.icon-selector');
+        if (iconSelector) {
+            iconSelector.innerHTML = '';
+            const icons = [
+                { name: 'default', label: 'Default', display: '0-9' },
+                { name: 'emoji', label: 'Emoji', display: '1️⃣2️⃣3️⃣' },
+                { name: 'font', label: 'Font', display: '0-9' },
+                { name: 'moon', label: 'Moon', display: '🌑🌕🌘' }
+            ];
+            
+            icons.forEach(icon => {
+                if (this.shop.owned.icons.includes(icon.name)) {
+                    const div = document.createElement('div');
+                    div.className = 'icon-option';
+                    div.setAttribute('data-icon', icon.name);
+                    if (icon.name === this.currentIconPack) {
+                        div.classList.add('active');
+                    }
+                    div.innerHTML = `<div>${icon.display}</div><div class="icon-name">${icon.label}</div>`;
+                    div.onclick = () => changeIconPack(icon.name);
+                    iconSelector.appendChild(div);
+                }
+            });
         }
     }
 
@@ -924,14 +911,8 @@ class NumberConnectionGame {
         SoundEffects.playButton();
         const newSize = parseInt(value);
         
-        if (newSize === 7 && this.stats.wins < 10) {
-            alert('🔒 7x7 board is locked! You need 10 wins to unlock it.');
-            this.updateBoardSizeDropdown();
-            return;
-        }
-        
-        if (newSize === 8 && this.stats.wins < 20) {
-            alert('🔒 8x8 board is locked! You need 20 wins to unlock it.');
+        if (!this.shop.owned.boards.includes(value)) {
+            alert('🔒 This board size is locked! Purchase it in the shop first.');
             this.updateBoardSizeDropdown();
             return;
         }
@@ -949,16 +930,8 @@ class NumberConnectionGame {
     changeGameMode(value) {
         SoundEffects.playButton();
         
-        // Check unlock requirements
-        const requirements = {
-            suddendeath: 10,
-            chainreaction: 20,
-            reverserules: 35,
-            mirrormatch: 50
-        };
-        
-        if (requirements[value] && this.stats.wins < requirements[value]) {
-            alert(`🔒 This mode is locked! You need ${requirements[value]} wins to unlock it.`);
+        if (!this.shop.owned.modes.includes(value)) {
+            alert('🔒 This game mode is locked! Purchase it in the shop first.');
             this.updateGameModeDropdown();
             return;
         }
@@ -992,49 +965,43 @@ class NumberConnectionGame {
             document.body.classList.add('icon-' + this.currentIconPack);
         }
         
-        document.querySelectorAll('.theme-option').forEach(option => {
+        const themeOptions = document.querySelectorAll('.theme-option');
+        themeOptions.forEach(option => {
             option.classList.remove('active');
         });
         
-        const activeTheme = document.querySelector(`.theme-option.${theme}`);
+        const activeTheme = document.querySelector(`.theme-option[onclick*="'${theme}'"]`);
         if (activeTheme) {
             activeTheme.classList.add('active');
         }
     }
 
-    // In class NumberConnectionGame...
-
     applyIconPack(pack) {
-        // If the game is in progress AND the selected pack is different, reset the game.
         if (!this.gameEnded && pack !== this.currentIconPack) {
             this.currentIconPack = pack;
             this.saveIconPack(pack);
             
-            // Close the settings modal and start a new game.
             closeSettings();
             this.newGame(); 
             this.showMessage("Game reset due to icon pack change.");
-            return; // Exit the function.
+            return;
         }
         
-        // If the game is over or the pack is the same, just update visuals.
         this.currentIconPack = pack;
         this.saveIconPack(pack);
 
-        // Update the body class for styling.
         document.body.className = document.body.className.replace(/icon-\w+/g, '').trim();
         if (pack !== 'default') {
             document.body.classList.add('icon-' + pack);
         }
         
-        // Update the active selection in the settings menu.
-        document.querySelectorAll('.icon-option').forEach(option => option.classList.remove('active'));
+        const iconOptions = document.querySelectorAll('.icon-option');
+        iconOptions.forEach(option => option.classList.remove('active'));
         const activeIcon = document.querySelector(`.icon-option[data-icon="${pack}"]`);
         if (activeIcon) {
             activeIcon.classList.add('active');
         }
         
-        // Refresh the numbers on the board.
         this.updateAllNumbers();
     }
 
@@ -1057,12 +1024,10 @@ class NumberConnectionGame {
         }
     }
 
-    // COMPLETELY REWRITTEN UNDO SYSTEM - FIXED
     saveUndoState() {
         if (!this.isPlayerTurn || this.currentPlayerCard === null) return;
         
         this.undoState = {
-            // Save BEFORE placing - copy empty cells
             mapState: this.mapState.map(cell => cell ? { number: cell.number, owner: cell.owner } : null),
             playerScore: this.playerScore,
             aiScore: this.aiScore,
@@ -1084,21 +1049,13 @@ class NumberConnectionGame {
             this.stopBlitzMode();
         }
         
-        // RESTORE THE BOARD COMPLETELY - cells become empty again
         this.mapState = this.undoState.mapState.map(cell => cell ? { number: cell.number, owner: cell.owner } : null);
-        
-        // Restore scores
         this.playerScore = this.undoState.playerScore;
         this.aiScore = this.undoState.aiScore;
-        
-        // Restore decks
         this.playerDeck = [...this.undoState.playerDeck];
         this.aiDeck = [...this.undoState.aiDeck];
-        
-        // Restore player's card
         this.currentPlayerCard = this.undoState.currentPlayerCard;
         
-        // Update UI
         const preview = document.getElementById('nextCardPreview');
         preview.classList.remove('show');
         this.viewNextActive = false;
@@ -1109,7 +1066,6 @@ class NumberConnectionGame {
         document.getElementById('playerScore').textContent = this.playerScore;
         document.getElementById('aiScore').textContent = this.aiScore;
         
-        // CRITICAL FIX: Actually update the visual board
         this.updateMap();
         this.updatePowerupDisplay();
         
@@ -1138,6 +1094,57 @@ class NumberConnectionGame {
             this.updatePowerupDisplay();
             this.showMessage(`👁️ Next card revealed: ${IconPacks[this.currentIconPack](nextCard)}`);
             SoundEffects.playPowerup();
+        }
+    }
+
+    useSkipAI() {
+        if (this.skipAIAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.gameMode !== 'survival' && this.gameMode !== 'blitz') {
+            this.skipAIAvailable--;
+            this.skipAIUsed = true;
+            this.updatePowerupDisplay();
+            this.showMessage("⏭️ AI's next turn will be skipped!");
+            SoundEffects.playPowerup();
+        }
+    }
+
+    useReplaceCard() {
+        if (this.replaceCardAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.currentPlayerCard !== null && this.gameMode !== 'survival') {
+            this.replaceCardAvailable--;
+            
+            const oldCard = this.currentPlayerCard;
+            this.playerDeck.push(this.currentPlayerCard);
+            
+            if (this.playerDeck.length > 0) {
+                let attempts = 0;
+                do {
+                    const randomIndex = Math.floor(Math.random() * this.playerDeck.length);
+                    this.currentPlayerCard = this.playerDeck.splice(randomIndex, 1)[0];
+                    attempts++;
+                    
+                    if (attempts > this.playerDeck.length + 1) {
+                        break;
+                    }
+                } while (this.currentPlayerCard === oldCard && this.playerDeck.length > 0);
+                
+                document.getElementById('currentCard').textContent = IconPacks[this.currentIconPack](this.currentPlayerCard);
+                
+                if (this.viewNextActive && this.playerDeck.length > 0) {
+                    const preview = document.getElementById('nextCardPreview');
+                    preview.textContent = `Next: ${IconPacks[this.currentIconPack](this.playerDeck[0])}`;
+                }
+                
+                this.showMessage("🔄 Card replaced!");
+                SoundEffects.playPowerup();
+            } else {
+                this.currentPlayerCard = null;
+                document.getElementById('currentCard').textContent = '—';
+                document.getElementById('nextCardPreview').classList.remove('show');
+                this.viewNextActive = false;
+                this.showMessage("No cards left!");
+                this.checkGameEnd();
+            }
+            
+            this.updatePowerupDisplay();
         }
     }
 
@@ -1171,7 +1178,7 @@ class NumberConnectionGame {
                 this.drawConnectionLines();
             });
         });
-    }
+    }// Continuing from init()...
 
     startBlitzMode() {
         if (this.gameMode !== 'blitz' || this.blitzActive) return;
@@ -1279,32 +1286,23 @@ class NumberConnectionGame {
         }
     }
 
-    // In class NumberConnectionGame...
-
     setupHoverEffects() {
         const mapGrid = document.getElementById('mapGrid');
         
         mapGrid.addEventListener('mouseover', (e) => {
             const cell = e.target.closest('.map-cell');
             
-            // --- START OF FIX ---
-            // The condition is changed to allow hovering at any time (not just the player's turn)
-            // as long as the game has not ended. It now works on ANY cell, not just empty ones.
             if (cell && !this.gameEnded) {
                 const cellIndex = parseInt(cell.dataset.index);
                 
-                // Avoids conflict with drag-and-drop highlighting
                 if (this.draggedOverCellIndex !== cellIndex) {
                     this.highlightNearbyConnections(cellIndex);
                 }
             }
-            // --- END OF FIX ---
         });
 
         mapGrid.addEventListener('mouseout', (e) => {
             const cell = e.target.closest('.map-cell');
-            // This condition is broadened to ensure highlights are cleared
-            // when moving off of ANY cell, not just empty ones.
             if (cell) {
                 this.clearNearbyHighlights();
             }
@@ -1473,7 +1471,6 @@ class NumberConnectionGame {
         const maxNum = IconPackMaxNumbers[this.currentIconPack] || 10;
         
         if (this.gameMode === 'mirrormatch') {
-            // Create one deck and copy it
             const mirrorDeck = [];
             for (let i = 0; i < this.deckSize; i++) {
                 mirrorDeck.push(Math.floor(Math.random() * maxNum));
@@ -1542,60 +1539,6 @@ class NumberConnectionGame {
         replaceBtn.disabled = this.replaceCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
         viewNextBtn.disabled = this.viewNextAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.playerDeck.length === 0;
         undoBtn.disabled = this.undoAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || !this.undoState;
-    }
-
-    useSkipAI() {
-        if (this.skipAIAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.gameMode !== 'survival' && this.gameMode !== 'blitz') {
-            this.skipAIAvailable--;
-            this.skipAIUsed = true;
-            this.updatePowerupDisplay();
-            this.showMessage("⏭️ AI's next turn will be skipped!");
-            SoundEffects.playPowerup();
-        }
-    }
-
-    useReplaceCard() {
-        if (this.replaceCardAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.currentPlayerCard !== null && this.gameMode !== 'survival') {
-            this.replaceCardAvailable--;
-            
-            const oldCard = this.currentPlayerCard;
-            
-            this.playerDeck.push(this.currentPlayerCard);
-            
-            if (this.playerDeck.length > 0) {
-                let attempts = 0;
-                do {
-                    const randomIndex = Math.floor(Math.random() * this.playerDeck.length);
-                    this.currentPlayerCard = this.playerDeck.splice(randomIndex, 1)[0];
-                    attempts++;
-                    
-                    if (attempts > this.playerDeck.length + 1) {
-                        break;
-                    }
-                } while (this.currentPlayerCard === oldCard && this.playerDeck.length > 0);
-                
-                document.getElementById('currentCard').textContent = IconPacks[this.currentIconPack](this.currentPlayerCard);
-                
-                if (this.viewNextActive && this.playerDeck.length > 0) {
-                    const preview = document.getElementById('nextCardPreview');
-                    preview.textContent = `Next: ${IconPacks[this.currentIconPack](this.playerDeck[0])}`;
-                }
-                
-                this.showMessage("🔄 Card replaced!");
-                SoundEffects.playPowerup();
-            } else {
-                this.currentPlayerCard = null;
-                document.getElementById('currentCard').textContent = '—';
-                
-                document.getElementById('nextCardPreview').classList.remove('show');
-                this.viewNextActive = false;
-                
-                this.showMessage("No cards left!");
-                this.checkGameEnd();
-            }
-            
-            this.updatePowerupDisplay();
-        }
     }
 
     createFloatingCard(number, startX, startY, endX, endY, isPlayer) {
@@ -1783,7 +1726,6 @@ class NumberConnectionGame {
     playCard(cellIndex) {
         if (this.currentPlayerCard === null || !this.isPlayerTurn || this.gameEnded) return;
 
-        // Save undo state BEFORE playing
         this.saveUndoState();
 
         const playedCard = this.currentPlayerCard;
@@ -1856,14 +1798,12 @@ class NumberConnectionGame {
                 this.showMessage(`🎉 You scored ${points} point${points !== 1 ? 's' : ''}!`);
                 SoundEffects.playScore();
                 
-                // Check sudden death
                 if (this.gameMode === 'suddendeath' && this.playerScore >= 10) {
                     this.showMessage('⚡ SUDDEN DEATH! You reached 10 points first! ⚡');
                     setTimeout(() => this.endGame(), 1500);
                     return;
                 }
                 
-                // Chain reaction - extra turn
                 if (this.gameMode === 'chainreaction') {
                     this.extraTurn = true;
                     this.showMessage(`🔗 CHAIN! You scored, take another turn!`);
@@ -1873,6 +1813,7 @@ class NumberConnectionGame {
                 this.extraTurn = false;
             }
             
+            // FIXED: Force update map to apply owner colors
             this.updateMap();
 
             if (this.shouldGameEnd()) {
@@ -1894,7 +1835,6 @@ class NumberConnectionGame {
                     this.checkGameEnd();
                 }
             } else if (this.gameMode === 'chainreaction' && this.extraTurn) {
-                // Give player another turn
                 setTimeout(() => {
                     this.isPlayerTurn = true;
                     this.enablePlayerInput();
@@ -1989,19 +1929,17 @@ class NumberConnectionGame {
                         this.showMessage(`🤖 AI scored ${points} point${points !== 1 ? 's' : ''}!`);
                         SoundEffects.playScore();
                         
-                        // Check sudden death
                         if (this.gameMode === 'suddendeath' && this.aiScore >= 10) {
                             this.showMessage('⚡ SUDDEN DEATH! AI reached 10 points first! ⚡');
                             setTimeout(() => this.endGame(), 1500);
                             return;
                         }
                         
-                        // Chain reaction - AI gets extra turn
                         if (this.gameMode === 'chainreaction') {
                             this.showMessage(`🔗 AI chains! Taking another turn!`);
                             setTimeout(() => {
                                 if (!this.shouldGameEnd()) {
-                                    this.aiTurn(); // AI goes again
+                                    this.aiTurn();
                                 } else {
                                     this.endGame();
                                 }
@@ -2012,6 +1950,7 @@ class NumberConnectionGame {
                         this.showMessage(`AI played but scored no points.`);
                     }
                     
+                    // FIXED: Force update map to apply owner colors
                     this.updateMap();
                     
                     setTimeout(() => {
@@ -2041,7 +1980,6 @@ class NumberConnectionGame {
 
         if (emptyCells.length === 0) return null;
 
-        // For reverse rules, AI wants LOWEST score
         if (this.gameMode === 'reverserules') {
             if (Math.random() > this.aiDifficulty) {
                 return emptyCells[Math.floor(Math.random() * emptyCells.length)];
@@ -2065,7 +2003,6 @@ class NumberConnectionGame {
             return bestCell;
         }
 
-        // Normal AI behavior
         if (Math.random() > this.aiDifficulty) {
             return emptyCells[Math.floor(Math.random() * emptyCells.length)];
         }
@@ -2100,6 +2037,7 @@ class NumberConnectionGame {
         return this.calculatePointsForState(cellIndex, number, owner, this.mapState, true);
     }
 
+    // FIXED: Scoring calculation with proper moon phase logic
     calculatePointsForState(cellIndex, number, owner, state, updateOwnership) {
         let totalPoints = 0;
         const highlightCells = new Set([cellIndex]);
@@ -2108,7 +2046,7 @@ class NumberConnectionGame {
 
         const connectedCells = this.getConnectedCells(cellIndex);
 
-        // For moon theme, use special matching rules
+        // FIXED: Moon icon pack special matching
         if (this.currentIconPack === 'moon') {
             connectedCells.forEach(connectedIndex => {
                 const connectedCell = state[connectedIndex];
@@ -2123,8 +2061,20 @@ class NumberConnectionGame {
                         cellsToOwn.add(connectedIndex);
                     }
                     
-                    // Full moon pairs (opposite phases = 4 apart in 8-phase cycle)
-                    if ((connectedCell.number + number) === 4 || Math.abs(connectedCell.number - number) === 4) {
+                    // FIXED: Full moon pairs - specific combinations only
+                    // 🌑(0)+🌕(4), 🌒(1)+🌖(5), 🌓(2)+🌗(6), 🌔(3)+🌘(7)
+                    const validPairs = [
+                        [0, 4], [4, 0], // 🌑+🌕
+                        [1, 5], [5, 1], // 🌒+🌖
+                        [2, 6], [6, 2], // 🌓+🌗
+                        [3, 7], [7, 3]  // 🌔+🌘
+                    ];
+                    
+                    const isPair = validPairs.some(([a, b]) => 
+                        connectedCell.number === a && number === b
+                    );
+                    
+                    if (isPair) {
                         totalPoints += 2;
                         cellPoints += 2;
                         highlightCells.add(connectedIndex);
@@ -2164,7 +2114,7 @@ class NumberConnectionGame {
             });
         }
 
-        // Sequences must be 3+ in length
+        // FIXED: Improved sequence detection
         const sequences = this.findAllSequences(cellIndex, number, state);
         sequences.forEach(sequence => {
             if (sequence.length >= 3) {
@@ -2219,12 +2169,16 @@ class NumberConnectionGame {
         return (num - 1 + maxNum) % maxNum;
     }
 
+    // FIXED: Improved sequence detection to catch all valid sequences
     findAllSequences(startIndex, startNumber, state) {
         const allSequences = [];
+        const visited = new Set();
         
-        const upSequence = this.exploreSequence(startIndex, startNumber, 'up', state);
-        const downSequence = this.exploreSequence(startIndex, startNumber, 'down', state);
+        // Try both directions from start cell
+        const upSequence = this.exploreSequence(startIndex, startNumber, 'up', state, new Set([startIndex]));
+        const downSequence = this.exploreSequence(startIndex, startNumber, 'down', state, new Set([startIndex]));
 
+        // Combine sequences
         if (upSequence.length > 1 || downSequence.length > 1) {
             const combined = [...downSequence.reverse().slice(0, -1), ...upSequence];
             if (combined.length >= 3) {
@@ -2235,9 +2189,8 @@ class NumberConnectionGame {
         return allSequences;
     }
 
-    exploreSequence(startIndex, startNumber, direction, state) {
+    exploreSequence(startIndex, startNumber, direction, state, visited) {
         const sequence = [startIndex];
-        const visited = new Set([startIndex]);
         
         let currentIndex = startIndex;
         let currentNumber = startNumber;
@@ -2284,19 +2237,20 @@ class NumberConnectionGame {
         });
     }
 
-    // In updateMap(), make the class updates more robust:
+    // FIXED: Improved updateMap to ensure colors are always updated
     updateMap() {
         const cells = document.querySelectorAll('.map-cell');
         cells.forEach((cell, index) => {
             const cellData = this.mapState[index];
             
-            // CRITICAL: Remove ALL possible state classes first
+            // Remove ALL possible state classes first
             cell.classList.remove('empty', 'neutral', 'player-owned', 'ai-owned', 
-                                'tutorial-highlight', 'drag-over', 'nearby-highlight'); // ADD MORE CLASSES
+                                'tutorial-highlight', 'drag-over', 'nearby-highlight');
             
             if (cellData) {
                 cell.textContent = IconPacks[this.currentIconPack](cellData.number);
                 
+                // FIXED: Apply owner color classes immediately
                 if (cellData.owner === 'player') {
                     cell.classList.add('player-owned');
                 } else if (cellData.owner === 'ai') {
@@ -2305,11 +2259,9 @@ class NumberConnectionGame {
                     cell.classList.add('neutral');
                 }
             } else {
-                // Reset empty cells properly
                 cell.textContent = '○';
                 cell.classList.add('empty');
-                // Ensure pointer events are enabled for empty cells
-                cell.style.pointerEvents = ''; // ADD THIS
+                cell.style.pointerEvents = '';
             }
         });
     }
@@ -2384,79 +2336,55 @@ class NumberConnectionGame {
                 this.stats.highScore = this.playerScore;
             }
 
-            const prevWins = this.stats.wins;
-            const unlockedItems = [];
-
+            // Award shop points ONLY if player wins
             this.stats.gamesPlayed++;
-            
-            // Determine winner (reverse for reverse rules)
+
             let playerWon = false;
             if (this.gameMode === 'reverserules') {
                 playerWon = this.playerScore < this.aiScore;
             } else {
                 playerWon = this.playerScore > this.aiScore;
             }
-            
+
+            let pointsEarned = 0;
             if (playerWon) {
                 this.stats.wins++;
-                
-                if (prevWins < 3 && this.stats.wins >= 3) {
-                    unlockedItems.push('🔥 Fire Theme');
-                }
-                if (prevWins < 5 && this.stats.wins >= 5) {
-                    unlockedItems.push('🌙 Midnight Theme');
-                }
-                if (prevWins < 10 && this.stats.wins >= 10) {
-                    unlockedItems.push('👑 Royal Theme', '⭐ 7x7 Board', '🎭 Font Icons', '⚡ Sudden Death Mode');
-                }
-                if (prevWins < 20 && this.stats.wins >= 20) {
-                    unlockedItems.push('🌌 Cosmic Theme', '💎 8x8 Board', '🔗 Chain Reaction Mode');
-                }
-                if (prevWins < 25 && this.stats.wins >= 25) {
-                    unlockedItems.push('🌝 Moon Icons');
-                }
-                if (prevWins < 35 && this.stats.wins >= 35) {
-                    unlockedItems.push('🌋 Lava Theme', '🔄 Reverse Rules Mode');
-                }
-                if (prevWins < 50 && this.stats.wins >= 50) {
-                    unlockedItems.push('💚 Emerald Theme', '🪞 Mirror Match Mode');
-                }
+                // Only award points if player wins
+                pointsEarned = Math.floor(this.playerScore * 0.1 * 10) / 10; // 0.1 points per score point
+                this.shop.points += pointsEarned;
+                this.saveShop();
             } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
                 this.stats.losses++;
             } else {
                 this.stats.ties++;
             }
+            
             this.saveStats();
 
             setTimeout(() => {
                 const gameOver = document.getElementById('gameOver');
                 const winnerText = document.getElementById('winnerText');
-                const unlockMessage = document.getElementById('unlockMessage');
+                const shopPointsEarned = document.getElementById('shopPointsEarned');
                 
                 if (playerWon) {
                     winnerText.textContent = '🎉 YOU WIN! 🎉';
                     winnerText.style.color = '#4CAF50';
                     SoundEffects.playWin();
-                    
-                    if (unlockedItems.length > 0) {
-                        unlockMessage.textContent = '🎊 Unlocked: ' + unlockedItems.join(', ');
-                        SoundEffects.playUnlock();
-                    } else {
-                        unlockMessage.textContent = '';
-                    }
+                    shopPointsEarned.textContent = `💰 Earned ${pointsEarned} shop points!`;
                 } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
                     winnerText.textContent = '🤖 AI WINS! 🤖';
                     winnerText.style.color = '#f44336';
-                    unlockMessage.textContent = '';
+                    shopPointsEarned.textContent = `No points earned - you lost!`;
                     SoundEffects.playLose();
                 } else {
                     winnerText.textContent = '🤝 TIE GAME! 🤝';
                     winnerText.style.color = '#FF9800';
-                    unlockMessage.textContent = '';
+                    shopPointsEarned.textContent = `No points earned - it's a tie!`;
                 }
 
                 document.getElementById('finalPlayerScore').textContent = this.playerScore;
                 document.getElementById('finalAIScore').textContent = this.aiScore;
+                document.getElementById('unlockMessage').textContent = '';
                 gameOver.classList.remove('hidden');
             }, 2000);
         }, bonusDelay);
@@ -2477,14 +2405,17 @@ class NumberConnectionGame {
         this.gameEnded = false;
         this.hoveredCellIndex = null;
         this.draggedOverCellIndex = null;
-        this.skipAIAvailable = this.gameMode === 'survival' ? 0 : 1;
+        
+        // Reset power-ups to default amounts
+        this.skipAIAvailable = 1;
         this.skipAIUsed = false;
-        this.replaceCardAvailable = this.gameMode === 'survival' ? 0 : 3;
-        this.viewNextAvailable = this.gameMode === 'survival' ? 0 : 1;
+        this.replaceCardAvailable = 3;
+        this.viewNextAvailable = 1;
         this.viewNextActive = false;
         this.viewNextUsedOnTurn = null;
-        this.undoAvailable = this.gameMode === 'survival' ? 0 : 1;
+        this.undoAvailable = 1;
         this.undoState = null;
+        
         this.lastAICard = null;
         this.lastAICellIndex = null;
         this.blitzActive = false;
@@ -2502,6 +2433,247 @@ class NumberConnectionGame {
         this.init();
         this.showMessage('New game started! Place your card!');
     }
+}
+
+// Shop Functions
+function showShop() {
+    SoundEffects.playButton();
+    const modal = document.getElementById('shopModal');
+    
+    // Update shop points display
+    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    
+    // Render shop items
+    renderShopItems();
+    
+    modal.classList.add('show');
+}
+
+function closeShop() {
+    SoundEffects.playButton();
+    document.getElementById('shopModal').classList.remove('show');
+}
+
+function renderShopItems() {
+    // Power-ups
+    const powerupContainer = document.getElementById('powerupShopItems');
+    powerupContainer.innerHTML = '';
+    
+    const powerups = [
+        { id: 'skipAI', name: 'Skip AI Turn', price: 1, icon: '⏭️' },
+        { id: 'replace', name: 'Replace Card', price: 0.5, icon: '🔄' },
+        { id: 'viewNext', name: 'View Next Card', price: 1.5, icon: '👁️' },
+        { id: 'undo', name: 'Undo Move', price: 2.5, icon: '↩️' }
+    ];
+    
+    powerups.forEach(powerup => {
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">${powerup.icon} ${powerup.name}</div>
+            <div class="shop-item-price">${powerup.price} pts</div>
+            <button onclick="buyPowerup('${powerup.id}', ${powerup.price})" 
+                    ${game.shop.points < powerup.price || game.gameMode === 'survival' ? 'disabled' : ''}>
+                Buy
+            </button>
+        `;
+        powerupContainer.appendChild(div);
+    });
+    
+    // Board sizes
+    const boardContainer = document.getElementById('boardShopItems');
+    boardContainer.innerHTML = '';
+    
+    const boards = [
+        { value: '7', name: '7x7 Epic Board', price: 10 },
+        { value: '8', name: '8x8 Massive Board', price: 20 }
+    ];
+    
+    boards.forEach(board => {
+        const owned = game.shop.owned.boards.includes(board.value);
+        const div = document.createElement('div');
+        div.className = owned ? 'shop-item owned' : 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">🗺️ ${board.name}</div>
+            <div class="shop-item-price">${owned ? 'Owned' : board.price + ' pts'}</div>
+            <button onclick="buyPermanent('board', '${board.value}', ${board.price})" 
+                    ${owned || game.shop.points < board.price ? 'disabled' : ''}>
+                ${owned ? '✓ Owned' : 'Buy'}
+            </button>
+        `;
+        boardContainer.appendChild(div);
+    });
+    
+    // Game modes
+    const modeContainer = document.getElementById('gamemodeShopItems');
+    modeContainer.innerHTML = '';
+    
+    const modes = [
+        { value: 'suddendeath', name: 'Sudden Death', price: 10 },
+        { value: 'chainreaction', name: 'Chain Reaction', price: 20 },
+        { value: 'reverserules', name: 'Reverse Rules', price: 35 },
+        { value: 'mirrormatch', name: 'Mirror Match', price: 50 }
+    ];
+    
+    modes.forEach(mode => {
+        const owned = game.shop.owned.modes.includes(mode.value);
+        const div = document.createElement('div');
+        div.className = owned ? 'shop-item owned' : 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">🎮 ${mode.name}</div>
+            <div class="shop-item-price">${owned ? 'Owned' : mode.price + ' pts'}</div>
+            <button onclick="buyPermanent('mode', '${mode.value}', ${mode.price})" 
+                    ${owned || game.shop.points < mode.price ? 'disabled' : ''}>
+                ${owned ? '✓ Owned' : 'Buy'}
+            </button>
+        `;
+        modeContainer.appendChild(div);
+    });
+    
+    // Themes
+    const themeContainer = document.getElementById('themeShopItems');
+    themeContainer.innerHTML = '';
+    
+    const themes = [
+        { value: 'fire', name: 'Fire Theme', price: 3 },
+        { value: 'midnight', name: 'Midnight Theme', price: 5 },
+        { value: 'royal', name: 'Royal Theme', price: 10 },
+        { value: 'cosmic', name: 'Cosmic Theme', price: 20 },
+        { value: 'lava', name: 'Lava Theme', price: 35 },
+        { value: 'emerald', name: 'Emerald Theme', price: 50 }
+    ];
+    
+    themes.forEach(theme => {
+        const owned = game.shop.owned.themes.includes(theme.value);
+        const div = document.createElement('div');
+        div.className = owned ? 'shop-item owned' : 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">🎨 ${theme.name}</div>
+            <div class="shop-item-price">${owned ? 'Owned' : theme.price + ' pts'}</div>
+            <button onclick="buyPermanent('theme', '${theme.value}', ${theme.price})" 
+                    ${owned || game.shop.points < theme.price ? 'disabled' : ''}>
+                ${owned ? '✓ Owned' : 'Buy'}
+            </button>
+        `;
+        themeContainer.appendChild(div);
+    });
+    
+    // Icon packs
+    const iconContainer = document.getElementById('iconShopItems');
+    iconContainer.innerHTML = '';
+    
+    const icons = [
+        { value: 'font', name: 'Font Icons', price: 10 },
+        { value: 'moon', name: 'Moon Phase Icons', price: 25 }
+    ];
+    
+    icons.forEach(icon => {
+        const owned = game.shop.owned.icons.includes(icon.value);
+        const div = document.createElement('div');
+        div.className = owned ? 'shop-item owned' : 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">🎭 ${icon.name}</div>
+            <div class="shop-item-price">${owned ? 'Owned' : icon.price + ' pts'}</div>
+            <button onclick="buyPermanent('icon', '${icon.value}', ${icon.price})" 
+                    ${owned || game.shop.points < icon.price ? 'disabled' : ''}>
+                ${owned ? '✓ Owned' : 'Buy'}
+            </button>
+        `;
+        iconContainer.appendChild(div);
+    });
+}
+
+function buyPowerup(type, price) {
+    if (game.shop.points < price) {
+        alert('Not enough points!');
+        return;
+    }
+    
+    if (game.gameMode === 'survival') {
+        alert('Cannot buy power-ups in Survival mode!');
+        return;
+    }
+    
+    game.shop.points -= price;
+    game.saveShop();
+    
+    switch(type) {
+        case 'skipAI':
+            game.skipAIAvailable++;
+            break;
+        case 'replace':
+            game.replaceCardAvailable++;
+            break;
+        case 'viewNext':
+            game.viewNextAvailable++;
+            break;
+        case 'undo':
+            game.undoAvailable++;
+            break;
+    }
+    
+    game.updatePowerupDisplay();
+    game.updateStatsDisplay();
+    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    renderShopItems();
+    
+    SoundEffects.playPowerup();
+}
+
+function buyPermanent(type, value, price) {
+    if (game.shop.points < price) {
+        alert('Not enough points!');
+        return;
+    }
+    
+    let alreadyOwned = false;
+    
+    switch(type) {
+        case 'board':
+            if (game.shop.owned.boards.includes(value)) {
+                alreadyOwned = true;
+            } else {
+                game.shop.owned.boards.push(value);
+            }
+            break;
+        case 'mode':
+            if (game.shop.owned.modes.includes(value)) {
+                alreadyOwned = true;
+            } else {
+                game.shop.owned.modes.push(value);
+            }
+            break;
+        case 'theme':
+            if (game.shop.owned.themes.includes(value)) {
+                alreadyOwned = true;
+            } else {
+                game.shop.owned.themes.push(value);
+            }
+            break;
+        case 'icon':
+            if (game.shop.owned.icons.includes(value)) {
+                alreadyOwned = true;
+            } else {
+                game.shop.owned.icons.push(value);
+            }
+            break;
+    }
+    
+    if (alreadyOwned) {
+        alert('You already own this item!');
+        return;
+    }
+    
+    game.shop.points -= price;
+    game.saveShop();
+    game.updateStatsDisplay();// Continuing from buyPermanent function...
+
+    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+
+    game.updateSettingsUI();
+    renderShopItems();
+    
+    SoundEffects.playUnlock();
 }
 
 function showSettings() {
@@ -2526,25 +2698,49 @@ function closeStats() {
 
 function resetStats() {
     SoundEffects.playButton();
-    if (confirm('Are you sure you want to reset all statistics? This will lock themes and board sizes again!')) {
+    if (confirm('Are you sure you want to reset all statistics AND shop data? This will reset your points and lock all purchased items!')) {
+        // Reset stats
         game.stats = {
             wins: 0,
             losses: 0,
             ties: 0,
             highScore: 0,
-            gamesPlayed: 0
+            gamesPlayed: 0,
+            shopPoints: 0
         };
         game.saveStats();
+        
+        // Reset shop
+        game.shop = {
+            points: 0,
+            owned: {
+                boards: ['3', '4', '5', '6'], // Default boards
+                modes: ['classic', 'nobonus', 'survival', 'blitz'], // Default modes
+                themes: ['default', 'dark', 'nature', 'sunset', 'ocean'], // Default themes
+                icons: ['default', 'emoji'] // Default icons
+            }
+        };
+        game.saveShop();
+        
+        // Update all displays
+        game.updateStatsDisplay();
+        game.updateSettingsUI();
+        
+        // If shop is open, update it
+        const shopModal = document.getElementById('shopModal');
+        if (shopModal.classList.contains('show')) {
+            document.getElementById('shopPointsDisplay').textContent = '0.0';
+            renderShopItems();
+        }
+        
         SoundEffects.playButton();
-        alert('Statistics have been reset!');
+        alert('Statistics and shop data have been completely reset!');
     }
 }
 
 function changeTheme(theme) {
-    const themeElement = document.querySelector(`.theme-option.${theme}`);
-    if (themeElement && themeElement.classList.contains('locked')) {
-        const winsRequired = themeElement.getAttribute('data-wins-required');
-        alert(`🔒 This theme is locked! You need ${winsRequired} wins to unlock it. (Current wins: ${game.stats.wins})`);
+    if (!game.shop.owned.themes.includes(theme)) {
+        alert('🔒 This theme is locked! Purchase it in the shop first.');
         return;
     }
     
@@ -2555,10 +2751,8 @@ function changeTheme(theme) {
 }
 
 function changeIconPack(pack) {
-    const iconElement = document.querySelector(`.icon-option[data-icon="${pack}"]`);
-    if (iconElement && iconElement.classList.contains('locked')) {
-        const winsRequired = iconElement.getAttribute('data-wins-required');
-        alert(`🔒 This icon pack is locked! You need ${winsRequired} wins to unlock it. (Current wins: ${game.stats.wins})`);
+    if (!game.shop.owned.icons.includes(pack)) {
+        alert('🔒 This icon pack is locked! Purchase it in the shop first.');
         return;
     }
     
@@ -2582,8 +2776,10 @@ function toggleRules() {
     rules.classList.toggle('show');
 }
 
+// Initialize game
 const game = new NumberConnectionGame();
 
+// Resize handler
 let resizeTimeout;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
@@ -2594,6 +2790,7 @@ window.addEventListener('resize', () => {
     }, 250);
 });
 
+// Modal close on background click
 document.getElementById('settingsModal').addEventListener('click', (e) => {
     if (e.target.id === 'settingsModal') {
         closeSettings();
@@ -2609,5 +2806,11 @@ document.getElementById('statsModal').addEventListener('click', (e) => {
 document.getElementById('tutorialModal').addEventListener('click', (e) => {
     if (e.target.id === 'tutorialModal') {
         closeTutorial();
+    }
+});
+
+document.getElementById('shopModal').addEventListener('click', (e) => {
+    if (e.target.id === 'shopModal') {
+        closeShop();
     }
 });

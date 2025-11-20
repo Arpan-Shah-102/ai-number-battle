@@ -47,6 +47,7 @@
                         <button onclick="game.newGame()">🔄 New Game</button>
                         <button onclick="showSettings()" class="secondary">⚙️ Settings</button>
                         <button onclick="showStats()" class="info">📊 Statistics</button>
+                        <button onclick="showShop()" class="warning">🛒 Shop</button>
                     </div>
                 </div>
 
@@ -72,16 +73,16 @@
 
                     <div class="powerups">
                         <button class="powerup-btn" id="skipAiBtn" onclick="game.useSkipAI()">
-                            ⏭️ Skip AI <span class="powerup-badge" id="skipAiCount">1</span>
+                            ⏭️ Skip AI <span class="powerup-badge" id="skipAiCount">0</span>
                         </button>
                         <button class="powerup-btn" id="replaceCardBtn" onclick="game.useReplaceCard()">
-                            🔄 Replace <span class="powerup-badge" id="replaceCardCount">3</span>
+                            🔄 Replace <span class="powerup-badge" id="replaceCardCount">0</span>
                         </button>
                         <button class="powerup-btn" id="viewNextBtn" onclick="game.useViewNext()">
-                            👁️ View Next <span class="powerup-badge" id="viewNextCount">1</span>
+                            👁️ View Next <span class="powerup-badge" id="viewNextCount">0</span>
                         </button>
                         <button class="powerup-btn" id="undoBtn" onclick="game.useUndo()">
-                            ↩️ Undo <span class="powerup-badge" id="undoCount">1</span>
+                            ↩️ Undo <span class="powerup-badge" id="undoCount">0</span>
                         </button>
                     </div>
                 </div>
@@ -114,8 +115,6 @@
                         <option value="4">4x4 (Fast)</option>
                         <option value="5" selected>5x5 (Classic)</option>
                         <option value="6">6x6 (Extended)</option>
-                        <option value="7" id="board7x7Option">7x7 (Epic) 🔒 Requires 10 wins</option>
-                        <option value="8" id="board8x8Option">8x8 (Massive) 🔒 Requires 20 wins</option>
                     </select>
                 </div>
 
@@ -126,10 +125,6 @@
                         <option value="nobonus">No Bonus (No end bonus points)</option>
                         <option value="survival">Survival (No powerups)</option>
                         <option value="blitz">Blitz (Race mode!)</option>
-                        <option value="suddendeath" id="suddendeathOption">Sudden Death 🔒 Requires 10 wins</option>
-                        <option value="chainreaction" id="chainreactionOption">Chain Reaction 🔒 Requires 20 wins</option>
-                        <option value="reverserules" id="reverserulesOption">Reverse Rules 🔒 Requires 35 wins</option>
-                        <option value="mirrormatch" id="mirrormatchOption">Mirror Match 🔒 Requires 50 wins</option>
                     </select>
                 </div>
 
@@ -156,36 +151,6 @@
                     </div>
                 </div>
 
-                <div class="theme-section">
-                    <div class="theme-section-title">Unlockable Themes</div>
-                    <div class="theme-selector" id="unlockedThemesContainer">
-                        <div class="theme-option fire locked" data-wins-required="3" onclick="changeTheme('fire')">
-                            Fire
-                            <div class="unlock-text">3 wins</div>
-                        </div>
-                        <div class="theme-option midnight locked" data-wins-required="5" onclick="changeTheme('midnight')">
-                            Midnight
-                            <div class="unlock-text">5 wins</div>
-                        </div>
-                        <div class="theme-option royal locked" data-wins-required="10" onclick="changeTheme('royal')">
-                            Royal
-                            <div class="unlock-text">10 wins</div>
-                        </div>
-                        <div class="theme-option cosmic locked" data-wins-required="20" onclick="changeTheme('cosmic')">
-                            Cosmic
-                            <div class="unlock-text">20 wins</div>
-                        </div>
-                        <div class="theme-option lava locked" data-wins-required="35" onclick="changeTheme('lava')">
-                            Lava
-                            <div class="unlock-text">35 wins</div>
-                        </div>
-                        <div class="theme-option emerald locked" data-wins-required="50" onclick="changeTheme('emerald')">
-                            Emerald
-                            <div class="unlock-text">50 wins</div>
-                        </div>
-                    </div>
-                </div>
-
                 <h3>🎭 Icon Packs</h3>
                 
                 <div class="icon-section">
@@ -198,22 +163,6 @@
                         <div class="icon-option" data-icon="emoji" onclick="changeIconPack('emoji')">
                             <div>1️⃣2️⃣3️⃣</div>
                             <div class="icon-name">Emoji</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="icon-section">
-                    <div class="icon-section-title">Unlockable Icon Packs</div>
-                    <div class="icon-selector">
-                        <div class="icon-option locked" data-icon="font" data-wins-required="10" onclick="changeIconPack('font')">
-                            <div style="font-family: 'Orbitron', sans-serif; font-weight: 900;">0-9</div>
-                            <div class="icon-name">Font</div>
-                            <div class="unlock-text">10 wins</div>
-                        </div>
-                        <div class="icon-option locked" data-icon="moon" data-wins-required="25" onclick="changeIconPack('moon')">
-                            <div>🌑🌕🌘</div>
-                            <div class="icon-name">Moon</div>
-                            <div class="unlock-text">25 wins</div>
                         </div>
                     </div>
                 </div>
@@ -253,6 +202,10 @@
                         <div class="stat-label">High Score</div>
                         <div class="stat-value" id="highScore">0</div>
                     </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Shop Points</div>
+                        <div class="stat-value" id="shopPointsStat">0</div>
+                    </div>
                 </div>
 
                 <h3>Win Rate</h3>
@@ -263,6 +216,68 @@
                 <div class="modal-buttons">
                     <button onclick="resetStats()" style="background: linear-gradient(135deg, #f44336 0%, #e53935 100%);">Reset Stats</button>
                     <button onclick="closeStats()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shop Modal -->
+        <div class="modal" id="shopModal">
+            <div class="modal-content large">
+                <h2>🛒 Shop</h2>
+                
+                <div class="shop-points-display">
+                    <div class="points-label">Your Shop Points</div>
+                    <div class="points-value" id="shopPointsDisplay">0</div>
+                </div>
+
+                <div class="shop-section">
+                    <h3>🎮 Power-ups (Current Game Only)</h3>
+                    <div class="shop-category">
+                        <h4>Consumable Power-ups</h4>
+                        <div class="shop-items" id="powerupShopItems">
+                            <!-- Power-ups will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shop-section">
+                    <h3>🗺️ Board Sizes (Permanent)</h3>
+                    <div class="shop-category">
+                        <div class="shop-items" id="boardShopItems">
+                            <!-- Board sizes will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shop-section">
+                    <h3>🎮 Game Modes (Permanent)</h3>
+                    <div class="shop-category">
+                        <div class="shop-items" id="gamemodeShopItems">
+                            <!-- Game modes will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shop-section">
+                    <h3>🎨 Themes (Permanent)</h3>
+                    <div class="shop-category">
+                        <div class="shop-items" id="themeShopItems">
+                            <!-- Themes will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shop-section">
+                    <h3>🎭 Icon Packs (Permanent)</h3>
+                    <div class="shop-category">
+                        <div class="shop-items" id="iconShopItems">
+                            <!-- Icon packs will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button onclick="closeShop()">Close</button>
                 </div>
             </div>
         </div>
@@ -286,6 +301,7 @@
                 <p>AI Score: <strong id="finalAIScore">0</strong></p>
             </div>
             <div id="unlockMessage" style="margin: 15px 0; font-weight: bold; color: #FF9800;"></div>
+            <div id="shopPointsEarned" style="margin: 15px 0; font-weight: bold; color: #FFD700;"></div>
             <button onclick="game.newGame()">Play Again</button>
         </div>
 
