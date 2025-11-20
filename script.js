@@ -703,6 +703,12 @@ class NumberConnectionGame {
     loadStats() {
         const saved = localStorage.getItem('gameStats');
         if (saved) {
+            if (JSON.parse(saved).shopPoints === undefined) {
+                const oldStats = JSON.parse(saved);
+                oldStats.shopPoints = 0;
+                localStorage.setItem('gameStats', JSON.stringify(oldStats));
+                return oldStats;
+            }
             return JSON.parse(saved);
         }
         return {
