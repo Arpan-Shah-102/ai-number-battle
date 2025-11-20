@@ -84,6 +84,9 @@
                         <button class="powerup-btn" id="undoBtn" onclick="game.useUndo()">
                             ↩️ Undo <span class="powerup-badge" id="undoCount">0</span>
                         </button>
+                        <button class="powerup-btn" id="pickCardBtn" onclick="game.usePickCard()">
+                            🎯 Pick Card <span class="powerup-badge" id="pickCardCount">0</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -281,6 +284,16 @@
                     <div class="shop-category">
                         <div class="shop-items" id="iconShopItems">
                             <!-- Icon packs will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shop-section">
+                    <h3>⚡ Permanent Power-up Bonuses</h3>
+                    <div class="shop-category">
+                        <h4>Start Every Game With Extra Power-ups!</h4>
+                        <div class="shop-items" id="permanentPowerupShopItems">
+                            <!-- Permanent powerups will be added here -->
                         </div>
                     </div>
                 </div>

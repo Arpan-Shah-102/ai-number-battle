@@ -56,15 +56,24 @@ body.emerald-theme {
   background: linear-gradient(135deg, #348F50 0%, #56B4D3 100%);
 }
 
-/* Icon Pack Styles */
-.icon-font .map-cell,
-.icon-font .current-card,
-.icon-font .floating-card {
+/* FIXED: Font icon pack styling */
+body.icon-font .map-cell,
+body.icon-font .current-card,
+body.icon-font .floating-card {
   font-family: 'Orbitron', sans-serif !important;
-  font-weight: 900;
-  letter-spacing: 2px;
+  font-weight: 900 !important;
+  letter-spacing: 2px !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+body.icon-font .map-cell {
+  font-size: clamp(1.2em, 3.5vw, 2em) !important;
+}
+
+body.icon-font .current-card {
+  font-family: 'Orbitron', sans-serif !important;
+  font-weight: 900 !important;
+}
 .game-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -1128,7 +1137,16 @@ button.warning {
 .shop-item.owned .shop-item-name {
   color: white;
 }
+.shop-item-desc {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 5px;
+  font-style: italic;
+}
 
+.shop-item.owned .shop-item-desc {
+  color: rgba(255,255,255,0.8);
+}
 .shop-item.owned .shop-item-price {
   color: rgba(255,255,255,0.9);
 }

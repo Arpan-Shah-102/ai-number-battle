@@ -75,14 +75,13 @@ const SoundEffects = {
 
 SoundEffects.init();
 
-// FIXED: Icon Pack conversion functions - Moon phase fixed
 const IconPacks = {
     default: (num) => num.toString(),
-    font: (num) => num.toString(),
+    font: (num) => num.toString(), // This already returns the number, font style is applied via CSS
     emoji: (num) => ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'][num],
     moon: (num) => {
         const phases = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
-        return phases[num % 8] || '🌑'; // FIXED: Always return valid icon
+        return phases[num % 8] || '🌑';
     }
 };
 
@@ -613,35 +612,38 @@ class NumberConnectionGame {
         this.gameEnded = false;
         this.hoveredCellIndex = null;
         this.draggedOverCellIndex = null;
-        
-        // Power-ups: default amounts regardless of game mode
-        this.skipAIAvailable = 1;
-        this.skipAIUsed = false;
-        this.replaceCardAvailable = 3;
-        this.viewNextAvailable = 1;
-        this.viewNextActive = false;
-        this.viewNextUsedOnTurn = null;
-        this.undoAvailable = 1;
-        this.undoState = null;
-        
+
         this.lastAICard = null;
         this.lastAICellIndex = null;
-        
+
         this.aiDifficulty = this.loadDifficulty();
         this.currentTheme = this.loadTheme();
         this.currentIconPack = this.loadIconPack();
         this.gameMode = this.loadGameMode();
         this.sfxEnabled = this.loadSFX();
-        
+
         this.blitzInterval = null;
         this.blitzActive = false;
-        
+
+        // FIXED: Load stats and shop BEFORE initializing power-ups
         this.stats = this.loadStats();
         this.shop = this.loadShop();
-        
+
         this.turnCount = 0;
         this.extraTurn = false;
-        
+
+        // FIXED: Now initialize power-ups AFTER shop is loaded
+        // Power-ups: default amounts + permanent bonuses
+        this.skipAIAvailable = 1 + (this.shop.owned.permanentPowerups?.skipAI || 0);
+        this.skipAIUsed = false;
+        this.replaceCardAvailable = 3 + (this.shop.owned.permanentPowerups?.replace || 0);
+        this.viewNextAvailable = 1 + (this.shop.owned.permanentPowerups?.viewNext || 0);
+        this.viewNextActive = false;
+        this.viewNextUsedOnTurn = null;
+        this.undoAvailable = 1 + (this.shop.owned.permanentPowerups?.undo || 0);
+        this.undoState = null;
+        this.pickCardAvailable = 0 + (this.shop.owned.permanentPowerups?.pickCard || 0);
+
         this.applyTheme(this.currentTheme);
         this.applyIconPack(this.currentIconPack);
         this.updateDifficultyDropdown();
@@ -650,9 +652,9 @@ class NumberConnectionGame {
         this.updateSFXToggle();
         this.updateStatsDisplay();
         this.updateSettingsUI();
-        
+
         this.init();
-    }
+        }
 
     loadDifficulty() {
         const saved = localStorage.getItem('aiDifficulty');
@@ -753,6 +755,16 @@ class NumberConnectionGame {
                 if (!shopData.owned.aiLevels) {
                     shopData.owned.aiLevels = ['0.4', '0.5', '0.6'];
                 }
+                // FIXED: Ensure permanentPowerups exists
+                if (!shopData.owned.permanentPowerups) {
+                    shopData.owned.permanentPowerups = {
+                        skipAI: 0,
+                        replace: 0,
+                        viewNext: 0,
+                        undo: 0,
+                        pickCard: 0
+                    };
+                }
                 return shopData;
             } catch (e) {
                 console.warn('Corrupted shop data found, resetting...');
@@ -767,7 +779,14 @@ class NumberConnectionGame {
                 modes: ['classic', 'nobonus', 'survival'],
                 themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
                 icons: ['default'],
-                aiLevels: ['0.4', '0.5', '0.6'] // Intermediate, Skilled, Advanced
+                aiLevels: ['0.4', '0.5', '0.6'],
+                permanentPowerups: { // FIXED: Added to default data
+                    skipAI: 0,
+                    replace: 0,
+                    viewNext: 0,
+                    undo: 0,
+                    pickCard: 0
+                }
             }
         };
         
@@ -776,8 +795,12 @@ class NumberConnectionGame {
         return shopData;
     }
 
-    saveShop() {
-        localStorage.setItem('shopData', JSON.stringify(this.shop));
+    saveShop(shopData = null) {
+        if (shopData) {
+            localStorage.setItem('shopData', JSON.stringify(shopData));
+        } else {
+            localStorage.setItem('shopData', JSON.stringify(this.shop));
+        }
     }
 
     updateStatsDisplay() {
@@ -1107,9 +1130,17 @@ class NumberConnectionGame {
         this.currentIconPack = pack;
         this.saveIconPack(pack);
 
+        // FIXED: Remove old icon classes and apply new one
         document.body.className = document.body.className.replace(/icon-\w+/g, '').trim();
         if (pack !== 'default') {
             document.body.classList.add('icon-' + pack);
+        }
+        
+        // Reapply theme class if it was removed
+        if (this.currentTheme && this.currentTheme !== 'default') {
+            if (!document.body.classList.contains(this.currentTheme + '-theme')) {
+                document.body.classList.add(this.currentTheme + '-theme');
+            }
         }
         
         const iconOptions = document.querySelectorAll('.icon-option');
@@ -1194,6 +1225,53 @@ class NumberConnectionGame {
         
         if (this.gameMode === 'blitz' && this.blitzActive) {
             this.startBlitzMode();
+        }
+    }
+
+    usePickCard() {
+        if (this.pickCardAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.gameMode !== 'survival') {
+            this.pickCardAvailable--;
+            
+            const maxNum = IconPackMaxNumbers[this.currentIconPack] || 10;
+            
+            // Show a simple prompt for card selection
+            let selectedCard = null;
+            let validInput = false;
+            
+            while (!validInput) {
+                const input = prompt(`Pick any card (0-${maxNum - 1}):`);
+                
+                if (input === null) {
+                    // User cancelled
+                    this.pickCardAvailable++;
+                    return;
+                }
+                
+                const num = parseInt(input);
+                if (!isNaN(num) && num >= 0 && num < maxNum) {
+                    selectedCard = num;
+                    validInput = true;
+                } else {
+                    alert(`Please enter a number between 0 and ${maxNum - 1}`);
+                }
+            }
+            
+            // Replace current card with selected card
+            if (this.currentPlayerCard !== null) {
+                this.playerDeck.push(this.currentPlayerCard);
+            }
+            
+            this.currentPlayerCard = selectedCard;
+            document.getElementById('currentCard').textContent = IconPacks[this.currentIconPack](this.currentPlayerCard);
+            
+            if (this.viewNextActive && this.playerDeck.length > 0) {
+                const preview = document.getElementById('nextCardPreview');
+                preview.textContent = `Next: ${IconPacks[this.currentIconPack](this.playerDeck[0])}`;
+            }
+            
+            this.showMessage(`🎯 Picked card: ${IconPacks[this.currentIconPack](selectedCard)}!`);
+            SoundEffects.playPowerup();
+            this.updatePowerupDisplay();
         }
     }
 
@@ -1651,11 +1729,13 @@ class NumberConnectionGame {
         const replaceBtn = document.getElementById('replaceCardBtn');
         const viewNextBtn = document.getElementById('viewNextBtn');
         const undoBtn = document.getElementById('undoBtn');
+        const pickCardBtn = document.getElementById('pickCardBtn'); // NEW
         
         document.getElementById('skipAiCount').textContent = this.skipAIAvailable;
         document.getElementById('replaceCardCount').textContent = this.replaceCardAvailable;
         document.getElementById('viewNextCount').textContent = this.viewNextAvailable;
         document.getElementById('undoCount').textContent = this.undoAvailable;
+        document.getElementById('pickCardCount').textContent = this.pickCardAvailable; // NEW
         
         const isSurvival = this.gameMode === 'survival';
         const isBlitz = this.gameMode === 'blitz';
@@ -1664,6 +1744,7 @@ class NumberConnectionGame {
         replaceBtn.disabled = this.replaceCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
         viewNextBtn.disabled = this.viewNextAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.playerDeck.length === 0;
         undoBtn.disabled = this.undoAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || !this.undoState;
+        pickCardBtn.disabled = this.pickCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival; // NEW
     }
 
     createFloatingCard(number, startX, startY, endX, endY, isPlayer) {
@@ -2201,20 +2282,11 @@ class NumberConnectionGame {
                         cellsToOwn.add(connectedIndex);
                     }
                     
-                    // FIXED: Full moon pairs - specific combinations only
+                    // FIXED: Moon phases only go 0-7, no "add to 10" rule
+                    // Instead: Opposite phases = 2 points
                     // 🌑(0)+🌕(4), 🌒(1)+🌖(5), 🌓(2)+🌗(6), 🌔(3)+🌘(7)
-                    const validPairs = [
-                        [0, 4], [4, 0], // 🌑+🌕
-                        [1, 5], [5, 1], // 🌒+🌖
-                        [2, 6], [6, 2], // 🌓+🌗
-                        [3, 7], [7, 3]  // 🌔+🌘
-                    ];
-                    
-                    const isPair = validPairs.some(([a, b]) => 
-                        connectedCell.number === a && number === b
-                    );
-                    
-                    if (isPair) {
+                    const diff = Math.abs(connectedCell.number - number);
+                    if (diff === 4) {
                         totalPoints += 2;
                         cellPoints += 2;
                         highlightCells.add(connectedIndex);
@@ -2254,7 +2326,7 @@ class NumberConnectionGame {
             });
         }
 
-        // FIXED: Improved sequence detection
+        // Rest of the function stays the same...
         const sequences = this.findAllSequences(cellIndex, number, state);
         sequences.forEach(sequence => {
             if (sequence.length >= 3) {
@@ -2592,15 +2664,16 @@ class NumberConnectionGame {
         this.hoveredCellIndex = null;
         this.draggedOverCellIndex = null;
         
-        // Reset power-ups to default amounts
-        this.skipAIAvailable = 1;
+        // Reset power-ups to default amounts + permanent bonuses
+        this.skipAIAvailable = 1 + (this.shop.owned.permanentPowerups?.skipAI || 0);
         this.skipAIUsed = false;
-        this.replaceCardAvailable = 3;
-        this.viewNextAvailable = 1;
+        this.replaceCardAvailable = 3 + (this.shop.owned.permanentPowerups?.replace || 0);
+        this.viewNextAvailable = 1 + (this.shop.owned.permanentPowerups?.viewNext || 0);
         this.viewNextActive = false;
         this.viewNextUsedOnTurn = null;
-        this.undoAvailable = 1;
+        this.undoAvailable = 1 + (this.shop.owned.permanentPowerups?.undo || 0);
         this.undoState = null;
+        this.pickCardAvailable = 0 + (this.shop.owned.permanentPowerups?.pickCard || 0); // NEW
         
         this.lastAICard = null;
         this.lastAICellIndex = null;
@@ -2641,17 +2714,18 @@ function closeShop() {
 }
 
 function renderShopItems() {
-    // Power-ups
+    // Add this BEFORE the Board sizes section
     const powerupContainer = document.getElementById('powerupShopItems');
     powerupContainer.innerHTML = '';
-    
+
     const powerups = [
         { id: 'skipAI', name: 'Skip AI Turn', price: 1, icon: '⏭️' },
         { id: 'replace', name: 'Replace Card', price: 0.5, icon: '🔄' },
         { id: 'viewNext', name: 'View Next Card', price: 1.5, icon: '👁️' },
-        { id: 'undo', name: 'Undo Move', price: 2.5, icon: '↩️' }
+        { id: 'undo', name: 'Undo Move', price: 2, icon: '↩️' },
+        { id: 'pickCard', name: 'Pick Any Card', price: 3, icon: '🎯' }
     ];
-    
+
     powerups.forEach(powerup => {
         const div = document.createElement('div');
         div.className = 'shop-item';
@@ -2664,6 +2738,35 @@ function renderShopItems() {
             </button>
         `;
         powerupContainer.appendChild(div);
+    });
+
+    // NEW: Permanent Power-up Bonuses
+    const permPowerupContainer = document.getElementById('permanentPowerupShopItems');
+    permPowerupContainer.innerHTML = '';
+
+    const permanentPowerups = [
+        { id: 'skipAI', name: 'Permanent Skip AI Bonus', basePrice: 1, icon: '⏭️' },
+        { id: 'replace', name: 'Permanent Replace Bonus', basePrice: 0.5, icon: '🔄' },
+        { id: 'viewNext', name: 'Permanent View Next Bonus', basePrice: 1.5, icon: '👁️' },
+        { id: 'undo', name: 'Permanent Undo Bonus', basePrice: 2, icon: '↩️' },
+        { id: 'pickCard', name: 'Permanent Pick Card Bonus', basePrice: 3, icon: '🎯' }
+    ];
+
+    permanentPowerups.forEach(powerup => {
+        const price = powerup.basePrice * 100;
+        const currentLevel = game.shop.owned.permanentPowerups?.[powerup.id] || 0;
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">${powerup.icon} ${powerup.name}</div>
+            <div class="shop-item-desc">Current: +${currentLevel} per game</div>
+            <div class="shop-item-price">${price} pts</div>
+            <button onclick="buyPermanentPowerup('${powerup.id}', ${price})" 
+                    ${game.shop.points < price || game.gameMode === 'survival' ? 'disabled' : ''}>
+                Buy +1
+            </button>
+        `;
+        permPowerupContainer.appendChild(div);
     });
 
     // AI Difficulty Levels
@@ -2826,6 +2929,9 @@ function buyPowerup(type, price) {
         case 'undo':
             game.undoAvailable++;
             break;
+        case 'pickCard': // NEW
+            game.pickCardAvailable++;
+            break;
     }
     
     game.updatePowerupDisplay();
@@ -2834,6 +2940,59 @@ function buyPowerup(type, price) {
     renderShopItems();
     
     SoundEffects.playPowerup();
+}
+
+function buyPermanentPowerup(type, price) {
+    if (game.shop.points < price) {
+        alert('Not enough points!');
+        return;
+    }
+    
+    if (game.gameMode === 'survival') {
+        alert('Cannot buy power-ups in Survival mode!');
+        return;
+    }
+    
+    if (!game.shop.owned.permanentPowerups) {
+        game.shop.owned.permanentPowerups = {
+            skipAI: 0,
+            replace: 0,
+            viewNext: 0,
+            undo: 0,
+            pickCard: 0
+        };
+    }
+    
+    game.shop.points -= price;
+    game.shop.owned.permanentPowerups[type]++;
+    
+    // Apply to current game immediately
+    switch(type) {
+        case 'skipAI':
+            game.skipAIAvailable++;
+            break;
+        case 'replace':
+            game.replaceCardAvailable++;
+            break;
+        case 'viewNext':
+            game.viewNextAvailable++;
+            break;
+        case 'undo':
+            game.undoAvailable++;
+            break;
+        case 'pickCard':
+            game.pickCardAvailable++;
+            break;
+    }
+    
+    game.saveShop();
+    game.updatePowerupDisplay();
+    game.updateStatsDisplay();
+    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    renderShopItems();
+    
+    SoundEffects.playUnlock();
+    alert(`✨ Permanent bonus purchased! You'll now start every game with +${game.shop.owned.permanentPowerups[type]} of this power-up!`);
 }
 
 function buyPermanent(type, value, price) {
