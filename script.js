@@ -703,13 +703,17 @@ class NumberConnectionGame {
     loadStats() {
         const saved = localStorage.getItem('gameStats');
         if (saved) {
-            if (JSON.parse(saved).shopPoints === undefined) {
-                const oldStats = JSON.parse(saved);
-                oldStats.shopPoints = 0;
-                localStorage.setItem('gameStats', JSON.stringify(oldStats));
-                return oldStats;
+            try {
+                const stats = JSON.parse(saved);
+                // Ensure shopPoints exists, default to 0 if missing
+                if (typeof stats.shopPoints !== 'number') {
+                    stats.shopPoints = 0;
+                }
+                return stats;
+            } catch (e) {
+                console.warn('Corrupted stats found, resetting...');
+                localStorage.removeItem('gameStats');
             }
-            return JSON.parse(saved);
         }
         return {
             wins: 0,
@@ -727,19 +731,43 @@ class NumberConnectionGame {
     }
 
     loadShop() {
-        const saved = localStorage.getItem('shopData');
+        let saved = localStorage.getItem('shopData');
         if (saved) {
-            return JSON.parse(saved);
+            try {
+                const shopData = JSON.parse(saved);
+                // Ensure points exists, default to 0 if missing
+                if (typeof shopData.points !== 'number') {
+                    shopData.points = 0;
+                }
+                // Ensure owned object exists with all categories
+                if (!shopData.owned) {
+                    shopData.owned = {
+                        boards: ['4', '5', '6'],
+                        modes: ['classic', 'nobonus', 'survival'],
+                        themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
+                        icons: ['default'],
+                        aiLevels: ['0.4', '0.5', '0.6']
+                    };
+                }
+                // Ensure aiLevels exists
+                if (!shopData.owned.aiLevels) {
+                    shopData.owned.aiLevels = ['0.4', '0.5', '0.6'];
+                }
+                return shopData;
+            } catch (e) {
+                console.warn('Corrupted shop data found, resetting...');
+                localStorage.removeItem('shopData');
+            }
         }
         
-        // First time: start with 0 shop points
         const shopData = {
             points: 0,
             owned: {
-                boards: ['3', '4', '5', '6'], // Default boards
-                modes: ['classic', 'nobonus', 'survival', 'blitz'], // Default modes
-                themes: ['default', 'dark', 'nature', 'sunset', 'ocean'], // Default themes
-                icons: ['default', 'emoji'] // Default icons
+                boards: ['4', '5', '6'],
+                modes: ['classic', 'nobonus', 'survival'],
+                themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
+                icons: ['default'],
+                aiLevels: ['0.4', '0.5', '0.6'] // Intermediate, Skilled, Advanced
             }
         };
         
@@ -765,6 +793,11 @@ class NumberConnectionGame {
     }
 
     updateSettingsUI() {
+        // Ensure shop data exists before accessing
+        if (!this.shop || !this.shop.owned) {
+            return;
+        }
+        
         // Update board size dropdown
         const boardSelect = document.getElementById('boardSizeSelect');
         if (boardSelect) {
@@ -779,7 +812,7 @@ class NumberConnectionGame {
             ];
             
             boardSizes.forEach(size => {
-                if (this.shop.owned.boards.includes(size.value)) {
+                if (this.shop.owned.boards && this.shop.owned.boards.includes(size.value)) {
                     const option = document.createElement('option');
                     option.value = size.value;
                     option.textContent = size.label;
@@ -807,7 +840,7 @@ class NumberConnectionGame {
             ];
             
             modes.forEach(mode => {
-                if (this.shop.owned.modes.includes(mode.value)) {
+                if (this.shop.owned.modes && this.shop.owned.modes.includes(mode.value)) {
                     const option = document.createElement('option');
                     option.value = mode.value;
                     option.textContent = mode.label;
@@ -815,6 +848,34 @@ class NumberConnectionGame {
                         option.selected = true;
                     }
                     modeSelect.appendChild(option);
+                }
+            });
+        }
+        
+        // Update AI difficulty dropdown
+        const difficultySelect = document.getElementById('difficultySelect');
+        if (difficultySelect) {
+            difficultySelect.innerHTML = '';
+            const difficulties = [
+                { value: '0.2', label: 'Novice' },
+                { value: '0.3', label: 'Beginner' },
+                { value: '0.4', label: 'Intermediate' },
+                { value: '0.5', label: 'Skilled' },
+                { value: '0.6', label: 'Advanced' },
+                { value: '0.7', label: 'Expert' },
+                { value: '0.8', label: 'Pro' },
+                { value: '0.9', label: 'Master' }
+            ];
+            
+            difficulties.forEach(diff => {
+                if (this.shop.owned.aiLevels && this.shop.owned.aiLevels.includes(diff.value)) {
+                    const option = document.createElement('option');
+                    option.value = diff.value;
+                    option.textContent = diff.label;
+                    if (parseFloat(diff.value) === this.aiDifficulty) {
+                        option.selected = true;
+                    }
+                    difficultySelect.appendChild(option);
                 }
             });
         }
@@ -838,7 +899,7 @@ class NumberConnectionGame {
             ];
             
             themes.forEach(theme => {
-                if (this.shop.owned.themes.includes(theme.name)) {
+                if (this.shop.owned.themes && this.shop.owned.themes.includes(theme.name)) {
                     const div = document.createElement('div');
                     div.className = `theme-option ${theme.class}`;
                     if (theme.name === this.currentTheme) {
@@ -863,7 +924,7 @@ class NumberConnectionGame {
             ];
             
             icons.forEach(icon => {
-                if (this.shop.owned.icons.includes(icon.name)) {
+                if (this.shop.owned.icons && this.shop.owned.icons.includes(icon.name)) {
                     const div = document.createElement('div');
                     div.className = 'icon-option';
                     div.setAttribute('data-icon', icon.name);
@@ -880,8 +941,40 @@ class NumberConnectionGame {
 
     updateDifficultyDropdown() {
         const select = document.getElementById('difficultySelect');
-        if (select) {
-            select.value = this.aiDifficulty.toString();
+        if (select && this.shop && this.shop.owned && this.shop.owned.aiLevels) {
+            // Clear and rebuild
+            select.innerHTML = '';
+            
+            const difficulties = [
+                { value: '0.2', label: 'Novice' },
+                { value: '0.3', label: 'Beginner' },
+                { value: '0.4', label: 'Intermediate' },
+                { value: '0.5', label: 'Skilled' },
+                { value: '0.6', label: 'Advanced' },
+                { value: '0.7', label: 'Expert' },
+                { value: '0.8', label: 'Pro' },
+                { value: '0.9', label: 'Master' }
+            ];
+            
+            difficulties.forEach(diff => {
+                if (this.shop.owned.aiLevels.includes(diff.value)) {
+                    const option = document.createElement('option');
+                    option.value = diff.value;
+                    option.textContent = diff.label;
+                    if (parseFloat(diff.value) === this.aiDifficulty) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                }
+            });
+            
+            // If current difficulty is not in owned list, default to first available
+            if (!this.shop.owned.aiLevels.includes(this.aiDifficulty.toString())) {
+                if (this.shop.owned.aiLevels.length > 0) {
+                    this.aiDifficulty = parseFloat(this.shop.owned.aiLevels[0]);
+                    this.saveDifficulty();
+                }
+            }
         }
     }
 
@@ -909,6 +1002,14 @@ class NumberConnectionGame {
 
     changeDifficulty(value) {
         SoundEffects.playButton();
+        
+        // Check if this difficulty is owned
+        if (!this.shop.owned.aiLevels || !this.shop.owned.aiLevels.includes(value)) {
+            alert('🔒 This AI difficulty is locked! Purchase it in the shop first.');
+            this.updateDifficultyDropdown();
+            return;
+        }
+        
         this.aiDifficulty = parseFloat(value);
         this.saveDifficulty();
     }
@@ -984,6 +1085,16 @@ class NumberConnectionGame {
 
     applyIconPack(pack) {
         if (!this.gameEnded && pack !== this.currentIconPack) {
+            // Check if any cards on board are out of range for new pack
+            const newMaxNum = IconPackMaxNumbers[pack] || 10;
+            const hasInvalidCards = this.mapState.some(cell => 
+                cell && cell.number >= newMaxNum
+            );
+            
+            if (hasInvalidCards) {
+                console.warn('Switching icon pack mid-game - some cards would be invalid. Resetting game.');
+            }
+            
             this.currentIconPack = pack;
             this.saveIconPack(pack);
             
@@ -1224,7 +1335,15 @@ class NumberConnectionGame {
             return;
         }
 
-        const aiCard = this.aiDeck.shift();
+        let aiCard = this.aiDeck.shift();
+
+        // FIXED: Ensure AI card is within valid range for current icon pack
+        const maxNum = IconPackMaxNumbers[this.currentIconPack] || 10;
+        if (aiCard >= maxNum) {
+            console.warn(`AI card ${aiCard} out of range for ${this.currentIconPack}, regenerating...`);
+            aiCard = Math.floor(Math.random() * maxNum);
+        }
+
         const bestMove = this.findBestAIMove(aiCard);
         
         if (bestMove !== null) {
@@ -1804,12 +1923,15 @@ class NumberConnectionGame {
                 this.showMessage(`🎉 You scored ${points} point${points !== 1 ? 's' : ''}!`);
                 SoundEffects.playScore();
                 
+                // FIXED: Force map update before checking sudden death
+                this.updateMap();
+                
                 if (this.gameMode === 'suddendeath' && this.playerScore >= 10) {
                     this.showMessage('⚡ SUDDEN DEATH! You reached 10 points first! ⚡');
-                    setTimeout(() => this.endGame(), 1500);
+                    // FIXED: Longer delay to let animations complete
+                    setTimeout(() => this.endGame(), 2000);
                     return;
                 }
-                
                 if (this.gameMode === 'chainreaction') {
                     this.extraTurn = true;
                     this.showMessage(`🔗 CHAIN! You scored, take another turn!`);
@@ -1880,7 +2002,15 @@ class NumberConnectionGame {
             return;
         }
 
-        const aiCard = this.aiDeck.shift();
+        let aiCard = this.aiDeck.shift();
+
+        // FIXED: Ensure AI card is within valid range for current icon pack
+        const maxNum = IconPackMaxNumbers[this.currentIconPack] || 10;
+        if (aiCard >= maxNum) {
+            console.warn(`AI card ${aiCard} out of range for ${this.currentIconPack}, regenerating...`);
+            aiCard = Math.floor(Math.random() * maxNum);
+        }
+
         const bestMove = this.findBestAIMove(aiCard);
         
         this.lastAICard = aiCard;
@@ -1935,9 +2065,13 @@ class NumberConnectionGame {
                         this.showMessage(`🤖 AI scored ${points} point${points !== 1 ? 's' : ''}!`);
                         SoundEffects.playScore();
                         
+                        // FIXED: Force map update before checking sudden death
+                        this.updateMap();
+                        
                         if (this.gameMode === 'suddendeath' && this.aiScore >= 10) {
                             this.showMessage('⚡ SUDDEN DEATH! AI reached 10 points first! ⚡');
-                            setTimeout(() => this.endGame(), 1500);
+                            // FIXED: Longer delay to let animations complete
+                            setTimeout(() => this.endGame(), 2000);
                             return;
                         }
                         
@@ -2178,56 +2312,94 @@ class NumberConnectionGame {
     // FIXED: Improved sequence detection to catch all valid sequences
     findAllSequences(startIndex, startNumber, state) {
         const allSequences = [];
-        const visited = new Set();
+        const maxNum = IconPackMaxNumbers[this.currentIconPack] || 10;
         
-        // Try both directions from start cell
-        const upSequence = this.exploreSequence(startIndex, startNumber, 'up', state, new Set([startIndex]));
-        const downSequence = this.exploreSequence(startIndex, startNumber, 'down', state, new Set([startIndex]));
-
-        // Combine sequences
+        // Build adjacency map for faster lookups
+        const adjacencyMap = new Map();
+        this.connections.forEach(({ from, to }) => {
+            if (!adjacencyMap.has(from)) adjacencyMap.set(from, []);
+            if (!adjacencyMap.has(to)) adjacencyMap.set(to, []);
+            adjacencyMap.get(from).push(to);
+            adjacencyMap.get(to).push(from);
+        });
+        
+        // Try finding sequences in both directions
+        const visitedGlobal = new Set();
+        
+        // Find sequence going "up" (incrementing numbers)
+        const upSequence = this.exploreSequenceDirection(
+            startIndex, 
+            startNumber, 
+            'up', 
+            state, 
+            new Set([startIndex]),
+            adjacencyMap,
+            maxNum
+        );
+        
+        // Find sequence going "down" (decrementing numbers)
+        const downSequence = this.exploreSequenceDirection(
+            startIndex, 
+            startNumber, 
+            'down', 
+            state, 
+            new Set([startIndex]),
+            adjacencyMap,
+            maxNum
+        );
+        
+        // Combine both directions
         if (upSequence.length > 1 || downSequence.length > 1) {
+            // Remove duplicate start index
             const combined = [...downSequence.reverse().slice(0, -1), ...upSequence];
             if (combined.length >= 3) {
                 allSequences.push(combined);
             }
         }
-
+        
         return allSequences;
     }
 
-    exploreSequence(startIndex, startNumber, direction, state, visited) {
+    exploreSequenceDirection(startIndex, startNumber, direction, state, visited, adjacencyMap, maxNum) {
         const sequence = [startIndex];
-        
         let currentIndex = startIndex;
         let currentNumber = startNumber;
-
+        
+        // Continue exploring in the given direction
         while (true) {
-            const connected = this.getConnectedCells(currentIndex);
+            const neighbors = adjacencyMap.get(currentIndex) || [];
             let foundNext = false;
-
-            for (const nextIndex of connected) {
-                if (visited.has(nextIndex)) continue;
+            
+            // Calculate expected next number
+            let expectedNumber;
+            if (direction === 'up') {
+                expectedNumber = (currentNumber + 1) % maxNum;
+            } else {
+                expectedNumber = (currentNumber - 1 + maxNum) % maxNum;
+            }
+            
+            // Look through all neighbors for the expected number
+            for (const neighborIndex of neighbors) {
+                // Skip if already visited
+                if (visited.has(neighborIndex)) continue;
                 
-                const nextCell = state[nextIndex];
-                if (!nextCell) continue;
-
-                const expectedNumber = direction === 'up' 
-                    ? this.getNextNumber(currentNumber)
-                    : this.getPrevNumber(currentNumber);
+                const neighborCell = state[neighborIndex];
                 
-                if (nextCell.number === expectedNumber) {
-                    visited.add(nextIndex);
-                    sequence.push(nextIndex);
-                    currentIndex = nextIndex;
-                    currentNumber = nextCell.number;
+                // Check if this neighbor has the expected number
+                if (neighborCell && neighborCell.number === expectedNumber) {
+                    visited.add(neighborIndex);
+                    sequence.push(neighborIndex);
+                    currentIndex = neighborIndex;
+                    currentNumber = neighborCell.number;
                     foundNext = true;
                     break;
                 }
             }
-
+            
+            // If we didn't find the next number, stop
             if (!foundNext) break;
         }
-
+        
         return sequence;
     }
 
@@ -2243,9 +2415,10 @@ class NumberConnectionGame {
         });
     }
 
-    // FIXED: Improved updateMap to ensure colors are always updated
     updateMap() {
         const cells = document.querySelectorAll('.map-cell');
+        const maxNum = IconPackMaxNumbers[this.currentIconPack] || 10;
+        
         cells.forEach((cell, index) => {
             const cellData = this.mapState[index];
             
@@ -2254,7 +2427,14 @@ class NumberConnectionGame {
                                 'tutorial-highlight', 'drag-over', 'nearby-highlight');
             
             if (cellData) {
-                cell.textContent = IconPacks[this.currentIconPack](cellData.number);
+                // FIXED: Validate number is in range
+                let displayNumber = cellData.number;
+                if (displayNumber >= maxNum) {
+                    console.warn(`Cell ${index} has invalid number ${displayNumber} for ${this.currentIconPack}`);
+                    displayNumber = displayNumber % maxNum; // Wrap to valid range
+                }
+                
+                cell.textContent = IconPacks[this.currentIconPack](displayNumber);
                 
                 // FIXED: Apply owner color classes immediately
                 if (cellData.owner === 'player') {
@@ -2485,12 +2665,40 @@ function renderShopItems() {
         `;
         powerupContainer.appendChild(div);
     });
+
+    // AI Difficulty Levels
+    const aiLevelContainer = document.getElementById('aiLevelShopItems');
+    aiLevelContainer.innerHTML = '';
+
+    const aiLevels = [
+        { value: '0.2', name: 'Novice AI', price: 2 },
+        { value: '0.3', name: 'Beginner AI', price: 3 },
+        { value: '0.7', name: 'Expert AI', price: 7.5 },
+        { value: '0.8', name: 'Pro AI', price: 12.5 },
+        { value: '0.9', name: 'Master AI', price: 20 }
+    ];
+
+    aiLevels.forEach(level => {
+        const owned = game.shop.owned.aiLevels && game.shop.owned.aiLevels.includes(level.value);
+        const div = document.createElement('div');
+        div.className = owned ? 'shop-item owned' : 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">🤖 ${level.name}</div>
+            <div class="shop-item-price">${owned ? 'Owned' : level.price + ' pts'}</div>
+            <button onclick="buyPermanent('aiLevel', '${level.value}', ${level.price})" 
+                    ${owned || game.shop.points < level.price ? 'disabled' : ''}>
+                ${owned ? '✓ Owned' : 'Buy'}
+            </button>
+        `;
+        aiLevelContainer.appendChild(div);
+    });
     
     // Board sizes
     const boardContainer = document.getElementById('boardShopItems');
     boardContainer.innerHTML = '';
     
     const boards = [
+        { value: '3', name: '3x3 Quick Board', price: 3 },
         { value: '7', name: '7x7 Epic Board', price: 10 },
         { value: '8', name: '8x8 Massive Board', price: 20 }
     ];
@@ -2515,6 +2723,7 @@ function renderShopItems() {
     modeContainer.innerHTML = '';
     
     const modes = [
+        { value: 'blitz', name: 'Blitz Mode', price: 3 },
         { value: 'suddendeath', name: 'Sudden Death', price: 10 },
         { value: 'chainreaction', name: 'Chain Reaction', price: 20 },
         { value: 'reverserules', name: 'Reverse Rules', price: 35 },
@@ -2569,6 +2778,7 @@ function renderShopItems() {
     iconContainer.innerHTML = '';
     
     const icons = [
+        { value: 'emoji', name: 'Emoji Numbers', price: 3 },
         { value: 'font', name: 'Font Icons', price: 10 },
         { value: 'moon', name: 'Moon Phase Icons', price: 25 }
     ];
@@ -2663,6 +2873,16 @@ function buyPermanent(type, value, price) {
                 game.shop.owned.icons.push(value);
             }
             break;
+        case 'aiLevel':
+            if (!game.shop.owned.aiLevels) {
+                game.shop.owned.aiLevels = ['intermediate', 'skilled', 'advanced'];
+            }
+            if (game.shop.owned.aiLevels.includes(value)) {
+                alreadyOwned = true;
+            } else {
+                game.shop.owned.aiLevels.push(value);
+            }
+            break;
     }
     
     if (alreadyOwned) {
@@ -2720,10 +2940,11 @@ function resetStats() {
         game.shop = {
             points: 0,
             owned: {
-                boards: ['3', '4', '5', '6'], // Default boards
-                modes: ['classic', 'nobonus', 'survival', 'blitz'], // Default modes
-                themes: ['default', 'dark', 'nature', 'sunset', 'ocean'], // Default themes
-                icons: ['default', 'emoji'] // Default icons
+                boards: ['4', '5', '6'],
+                modes: ['classic', 'nobonus', 'survival'],
+                themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
+                icons: ['default'],
+                aiLevels: ['0.4', '0.5', '0.6'] // Default: Intermediate, Skilled, Advanced
             }
         };
         game.saveShop();
