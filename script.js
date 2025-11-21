@@ -126,6 +126,113 @@ function startTutorial() {
     modal.classList.add('show');
 }
 
+// Dynamic menu positioning to prevent overflow
+function updatePowerupMenuPosition() {
+    const activator = document.getElementById('powerupsActivator');
+    const menu = document.getElementById('powerupsMenu');
+    
+    if (!activator || !menu) return;
+    
+    // Only apply on desktop
+    if (window.innerWidth >= 768) {
+        const activatorRect = activator.getBoundingClientRect();
+        const menuHeight = 400; // max-height from CSS
+        const spaceBelow = window.innerHeight - activatorRect.bottom;
+        const spaceAbove = activatorRect.top;
+        
+        // Calculate available space and set CSS variable
+        const availableSpace = Math.max(spaceBelow - 20, 200);
+        document.documentElement.style.setProperty('--menu-top', `${activatorRect.bottom}px`);
+        
+        // If not enough space below, consider opening upward on desktop too
+        if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+            menu.style.bottom = 'calc(100% + 10px)';
+            menu.style.top = 'auto';
+            menu.style.maxHeight = `min(400px, ${Math.min(spaceAbove - 20, 400)}px)`;
+        } else {
+            menu.style.top = 'calc(100% + 10px)';
+            menu.style.bottom = 'auto';
+            menu.style.maxHeight = `min(400px, ${availableSpace}px)`;
+        }
+    }
+}
+
+// Update position on page load and window resize
+window.addEventListener('load', updatePowerupMenuPosition);
+window.addEventListener('resize', updatePowerupMenuPosition);
+
+// Update when the activator is hovered (for dynamic content changes)
+document.addEventListener('DOMContentLoaded', () => {
+    const activator = document.getElementById('powerupsActivator');
+    if (activator) {
+        activator.addEventListener('mouseenter', updatePowerupMenuPosition);
+    }
+});
+// Better mobile touch handling for power-ups menu
+document.addEventListener('DOMContentLoaded', () => {
+    const activatorBtn = document.querySelector('.powerup-activator-btn');
+    const menu = document.querySelector('.powerups-menu');
+    const activator = document.querySelector('.powerups-activator');
+    
+    if (!activatorBtn || !menu || !activator) return;
+    
+    let menuOpen = false;
+    
+    // Toggle menu on mobile touch
+    if (window.innerWidth < 768) {
+        activatorBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            menuOpen = !menuOpen;
+            
+            if (menuOpen) {
+                menu.style.opacity = '1';
+                menu.style.visibility = 'visible';
+                menu.style.transform = 'translateY(0)';
+            } else {
+                menu.style.opacity = '0';
+                menu.style.visibility = 'hidden';
+                menu.style.transform = 'translateY(10px)';
+            }
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!activator.contains(e.target) && menuOpen) {
+                menuOpen = false;
+                menu.style.opacity = '0';
+                menu.style.visibility = 'hidden';
+                menu.style.transform = 'translateY(10px)';
+            }
+        });
+        
+        // Close menu after using a power-up
+        const menuItems = menu.querySelectorAll('.powerup-menu-item');
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                setTimeout(() => {
+                    menuOpen = false;
+                    menu.style.opacity = '0';
+                    menu.style.visibility = 'hidden';
+                    menu.style.transform = 'translateY(10px)';
+                }, 300);
+            });
+        });
+    }
+    
+    // Re-initialize on resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            menuOpen = false;
+            menu.style.opacity = '';
+            menu.style.visibility = '';
+            menu.style.transform = '';
+        }, 250);
+    });
+});
+
 function closeTutorial() {
     SoundEffects.playButton();
     document.getElementById('tutorialModal').classList.remove('show');
@@ -643,6 +750,9 @@ class NumberConnectionGame {
         this.undoAvailable = 1 + (this.shop.owned.permanentPowerups?.undo || 0);
         this.undoState = null;
         this.pickCardAvailable = 0 + (this.shop.owned.permanentPowerups?.pickCard || 0);
+        // NEW: Double points power-up
+        this.doublePointsAvailable = 0 + (this.shop.owned.permanentPowerups?.doublePoints || 0);
+        this.doublePointsActive = false;
 
         this.applyTheme(this.currentTheme);
         this.applyIconPack(this.currentIconPack);
@@ -762,8 +872,9 @@ class NumberConnectionGame {
                         replace: 0,
                         viewNext: 0,
                         undo: 0,
-                        pickCard: 0
-                    };
+                        pickCard: 0,
+                        doublePoints: 0 // NEW
+                    }
                 }
                 return shopData;
             } catch (e) {
@@ -780,12 +891,13 @@ class NumberConnectionGame {
                 themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
                 icons: ['default'],
                 aiLevels: ['0.4', '0.5', '0.6'],
-                permanentPowerups: { // FIXED: Added to default data
+                permanentPowerups: {
                     skipAI: 0,
                     replace: 0,
                     viewNext: 0,
                     undo: 0,
-                    pickCard: 0
+                    pickCard: 0,
+                    doublePoints: 0 // NEW
                 }
             }
         };
@@ -940,10 +1052,10 @@ class NumberConnectionGame {
         if (iconSelector) {
             iconSelector.innerHTML = '';
             const icons = [
-                { name: 'default', label: 'Default', display: '0-9' },
-                { name: 'emoji', label: 'Emoji', display: '1️⃣2️⃣3️⃣' },
-                { name: 'font', label: 'Font', display: '0-9' },
-                { name: 'moon', label: 'Moon', display: '🌑🌕🌘' }
+                { name: 'default', label: 'Default', display: '0-9', class: '' },
+                { name: 'emoji', label: 'Emoji', display: '1️⃣2️⃣3️⃣', class: '' },
+                { name: 'font', label: 'Font', display: '0-9', class: 'icon-font-preview' }, // FIXED
+                { name: 'moon', label: 'Moon', display: '🌑🌕🌘', class: '' }
             ];
             
             icons.forEach(icon => {
@@ -954,7 +1066,9 @@ class NumberConnectionGame {
                     if (icon.name === this.currentIconPack) {
                         div.classList.add('active');
                     }
-                    div.innerHTML = `<div>${icon.display}</div><div class="icon-name">${icon.label}</div>`;
+                    // FIXED: Add special class for font preview
+                    const displayClass = icon.class ? ` class="${icon.class}"` : '';
+                    div.innerHTML = `<div${displayClass}>${icon.display}</div><div class="icon-name">${icon.label}</div>`;
                     div.onclick = () => changeIconPack(icon.name);
                     iconSelector.appendChild(div);
                 }
@@ -1272,6 +1386,24 @@ class NumberConnectionGame {
             this.showMessage(`🎯 Picked card: ${IconPacks[this.currentIconPack](selectedCard)}!`);
             SoundEffects.playPowerup();
             this.updatePowerupDisplay();
+        }
+    }
+    useDoublePoints() {
+        if (this.doublePointsAvailable > 0 && this.isPlayerTurn && !this.gameEnded && 
+            this.gameMode !== 'survival' && !this.doublePointsActive) {
+            this.doublePointsAvailable--;
+            this.doublePointsActive = true;
+            
+            this.showMessage("💎 DOUBLE POINTS activated for this game!");
+            SoundEffects.playPowerup();
+            this.updatePowerupDisplay();
+            
+            // Show visual indicator on score card
+            const playerScoreCard = document.querySelector('.score-card.player');
+            const indicator = document.createElement('div');
+            indicator.className = 'double-points-indicator';
+            indicator.textContent = '💎 2X';
+            playerScoreCard.appendChild(indicator);
         }
     }
 
@@ -1729,13 +1861,15 @@ class NumberConnectionGame {
         const replaceBtn = document.getElementById('replaceCardBtn');
         const viewNextBtn = document.getElementById('viewNextBtn');
         const undoBtn = document.getElementById('undoBtn');
-        const pickCardBtn = document.getElementById('pickCardBtn'); // NEW
+        const pickCardBtn = document.getElementById('pickCardBtn');
+        const doublePointsBtn = document.getElementById('doublePointsBtn'); // NEW
         
         document.getElementById('skipAiCount').textContent = this.skipAIAvailable;
         document.getElementById('replaceCardCount').textContent = this.replaceCardAvailable;
         document.getElementById('viewNextCount').textContent = this.viewNextAvailable;
         document.getElementById('undoCount').textContent = this.undoAvailable;
-        document.getElementById('pickCardCount').textContent = this.pickCardAvailable; // NEW
+        document.getElementById('pickCardCount').textContent = this.pickCardAvailable;
+        document.getElementById('doublePointsCount').textContent = this.doublePointsAvailable; // NEW
         
         const isSurvival = this.gameMode === 'survival';
         const isBlitz = this.gameMode === 'blitz';
@@ -1744,7 +1878,8 @@ class NumberConnectionGame {
         replaceBtn.disabled = this.replaceCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
         viewNextBtn.disabled = this.viewNextAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.playerDeck.length === 0;
         undoBtn.disabled = this.undoAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || !this.undoState;
-        pickCardBtn.disabled = this.pickCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival; // NEW
+        pickCardBtn.disabled = this.pickCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
+        doublePointsBtn.disabled = this.doublePointsAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.doublePointsActive; // NEW
     }
 
     createFloatingCard(number, startX, startY, endX, endY, isPlayer) {
@@ -1994,14 +2129,25 @@ class NumberConnectionGame {
             const points = this.calculatePoints(cellIndex, playedCard, 'player');
             
             if (points > 0) {
-                this.playerScore += points;
+                // NEW: Apply double points multiplier
+                let finalPoints = points;
+                if (this.doublePointsActive) {
+                    finalPoints = points * 2;
+                }
+                
+                this.playerScore += finalPoints;
                 this.updateScore('player');
                 
                 const scoreCard = document.querySelector('.score-card.player');
                 const rect = scoreCard.getBoundingClientRect();
-                this.createPointsPopup(points, rect.left + rect.width / 2 - 50, rect.top - 50, true);
+                this.createPointsPopup(finalPoints, rect.left + rect.width / 2 - 50, rect.top - 50, true);
                 
-                this.showMessage(`🎉 You scored ${points} point${points !== 1 ? 's' : ''}!`);
+                // NEW: Show double points message
+                if (this.doublePointsActive) {
+                    this.showMessage(`🎉 You scored ${points} × 2 = ${finalPoints} points! 💎`);
+                } else {
+                    this.showMessage(`🎉 You scored ${finalPoints} point${finalPoints !== 1 ? 's' : ''}!`);
+                }
                 SoundEffects.playScore();
                 
                 // FIXED: Force map update before checking sudden death
@@ -2674,6 +2820,17 @@ class NumberConnectionGame {
         this.undoAvailable = 1 + (this.shop.owned.permanentPowerups?.undo || 0);
         this.undoState = null;
         this.pickCardAvailable = 0 + (this.shop.owned.permanentPowerups?.pickCard || 0); // NEW
+        this.undoAvailable = 1 + (this.shop.owned.permanentPowerups?.undo || 0);
+        this.undoState = null;
+        // pickCardAvailable keeps accumulated from permanent bonuses
+        this.doublePointsAvailable = 0 + (this.shop.owned.permanentPowerups?.doublePoints || 0); // NEW
+        this.doublePointsActive = false; // NEW
+
+        // Remove double points indicator if exists
+        const existingIndicator = document.querySelector('.double-points-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
         
         this.lastAICard = null;
         this.lastAICellIndex = null;
@@ -2723,7 +2880,8 @@ function renderShopItems() {
         { id: 'replace', name: 'Replace Card', price: 0.5, icon: '🔄' },
         { id: 'viewNext', name: 'View Next Card', price: 1.5, icon: '👁️' },
         { id: 'undo', name: 'Undo Move', price: 2, icon: '↩️' },
-        { id: 'pickCard', name: 'Pick Any Card', price: 3, icon: '🎯' }
+        { id: 'pickCard', name: 'Pick Any Card', price: 3, icon: '🎯' },
+        { id: 'doublePoints', name: 'Double Points', price: 10, icon: '💎' } // NEW
     ];
 
     powerups.forEach(powerup => {
@@ -2749,7 +2907,8 @@ function renderShopItems() {
         { id: 'replace', name: 'Permanent Replace Bonus', basePrice: 0.5, icon: '🔄' },
         { id: 'viewNext', name: 'Permanent View Next Bonus', basePrice: 1.5, icon: '👁️' },
         { id: 'undo', name: 'Permanent Undo Bonus', basePrice: 2, icon: '↩️' },
-        { id: 'pickCard', name: 'Permanent Pick Card Bonus', basePrice: 3, icon: '🎯' }
+        { id: 'pickCard', name: 'Permanent Pick Card Bonus', basePrice: 3, icon: '🎯' },
+        { id: 'doublePoints', name: 'Permanent Double Points Bonus', basePrice: 10, icon: '💎' } // NEW
     ];
 
     permanentPowerups.forEach(powerup => {
@@ -2929,8 +3088,11 @@ function buyPowerup(type, price) {
         case 'undo':
             game.undoAvailable++;
             break;
-        case 'pickCard': // NEW
+        case 'pickCard':
             game.pickCardAvailable++;
+            break;
+        case 'doublePoints': // NEW
+            game.doublePointsAvailable++;
             break;
     }
     
@@ -2959,13 +3121,14 @@ function buyPermanentPowerup(type, price) {
             replace: 0,
             viewNext: 0,
             undo: 0,
-            pickCard: 0
+            pickCard: 0,
+            doublePoints: 0 // NEW
         };
     }
-    
+
     game.shop.points -= price;
     game.shop.owned.permanentPowerups[type]++;
-    
+
     // Apply to current game immediately
     switch(type) {
         case 'skipAI':
@@ -2982,6 +3145,9 @@ function buyPermanentPowerup(type, price) {
             break;
         case 'pickCard':
             game.pickCardAvailable++;
+            break;
+        case 'doublePoints': // NEW
+            game.doublePointsAvailable++;
             break;
     }
     

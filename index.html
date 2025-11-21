@@ -70,23 +70,43 @@
                             <div class="next-card-preview" id="nextCardPreview">Next: ?</div>
                         </div>
                     </div>
-
-                    <div class="powerups">
-                        <button class="powerup-btn" id="skipAiBtn" onclick="game.useSkipAI()">
-                            ⏭️ Skip AI <span class="powerup-badge" id="skipAiCount">0</span>
-                        </button>
-                        <button class="powerup-btn" id="replaceCardBtn" onclick="game.useReplaceCard()">
-                            🔄 Replace <span class="powerup-badge" id="replaceCardCount">0</span>
-                        </button>
-                        <button class="powerup-btn" id="viewNextBtn" onclick="game.useViewNext()">
-                            👁️ View Next <span class="powerup-badge" id="viewNextCount">0</span>
-                        </button>
-                        <button class="powerup-btn" id="undoBtn" onclick="game.useUndo()">
-                            ↩️ Undo <span class="powerup-badge" id="undoCount">0</span>
-                        </button>
-                        <button class="powerup-btn" id="pickCardBtn" onclick="game.usePickCard()">
-                            🎯 Pick Card <span class="powerup-badge" id="pickCardCount">0</span>
-                        </button>
+                    
+                    <!-- NEW: Power-ups Menu moved outside and below -->
+                    <div class="powerups-activator" id="powerupsActivator">
+                        <button class="powerup-activator-btn">⚡ Power-ups</button>
+                        <div class="powerups-menu" id="powerupsMenu">
+                            <div class="powerups-menu-header">Available Power-ups</div>
+                            <button class="powerup-menu-item" id="skipAiBtn" onclick="game.useSkipAI()">
+                                <span class="powerup-icon">⏭️</span>
+                                <span class="powerup-name">Skip AI</span>
+                                <span class="powerup-badge" id="skipAiCount">0</span>
+                            </button>
+                            <button class="powerup-menu-item" id="replaceCardBtn" onclick="game.useReplaceCard()">
+                                <span class="powerup-icon">🔄</span>
+                                <span class="powerup-name">Replace Card</span>
+                                <span class="powerup-badge" id="replaceCardCount">0</span>
+                            </button>
+                            <button class="powerup-menu-item" id="viewNextBtn" onclick="game.useViewNext()">
+                                <span class="powerup-icon">👁️</span>
+                                <span class="powerup-name">View Next</span>
+                                <span class="powerup-badge" id="viewNextCount">0</span>
+                            </button>
+                            <button class="powerup-menu-item" id="undoBtn" onclick="game.useUndo()">
+                                <span class="powerup-icon">↩️</span>
+                                <span class="powerup-name">Undo Move</span>
+                                <span class="powerup-badge" id="undoCount">0</span>
+                            </button>
+                            <button class="powerup-menu-item" id="pickCardBtn" onclick="game.usePickCard()">
+                                <span class="powerup-icon">🎯</span>
+                                <span class="powerup-name">Pick Card</span>
+                                <span class="powerup-badge" id="pickCardCount">0</span>
+                            </button>
+                            <button class="powerup-menu-item" id="doublePointsBtn" onclick="game.useDoublePoints()">
+                                <span class="powerup-icon">💎</span>
+                                <span class="powerup-name">Double Points</span>
+                                <span class="powerup-badge" id="doublePointsCount">0</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
