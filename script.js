@@ -1547,7 +1547,7 @@ class NumberConnectionGame {
         this.setupDragAndDrop();
         this.setupTouch();
         this.setupHoverEffects();
-        this.updatePowerupDisplay();
+        this.updatePowerupDisplay(); // FIXED: Ensure this is called
         
         let modeName = this.gameMode.charAt(0).toUpperCase() + this.gameMode.slice(1);
         if (this.gameMode === 'blitz') {
@@ -1569,7 +1569,7 @@ class NumberConnectionGame {
                 this.drawConnectionLines();
             });
         });
-    }// Continuing from init()...
+    }
 
     startBlitzMode() {
         if (this.gameMode !== 'blitz' || this.blitzActive) return;
@@ -2843,6 +2843,9 @@ class NumberConnectionGame {
                 const winnerText = document.getElementById('winnerText');
                 const shopPointsEarned = document.getElementById('shopPointsEarned');
                 
+                // FIXED: Save power-up state before showing game over
+                this.savePowerupState();
+                
                 if (playerWon) {
                     winnerText.textContent = '🎉 YOU WIN! 🎉';
                     winnerText.style.color = '#4CAF50';
@@ -2883,7 +2886,15 @@ class NumberConnectionGame {
         this.hoveredCellIndex = null;
         this.draggedOverCellIndex = null;
         
-        // FIXED: Don't reset power-up counts - they persist!
+        // FIXED: Reload power-up state from storage to ensure persistence
+        const savedPowerups = this.loadPowerupState();
+        this.skipAIAvailable = savedPowerups.skipAI;
+        this.replaceCardAvailable = savedPowerups.replace;
+        this.viewNextAvailable = savedPowerups.viewNext;
+        this.undoAvailable = savedPowerups.undo;
+        this.pickCardAvailable = savedPowerups.pickCard;
+        this.doublePointsAvailable = savedPowerups.doublePoints;
+        
         // Only reset game-specific states
         this.skipAIUsed = false;
         this.viewNextActive = false;
@@ -2912,6 +2923,10 @@ class NumberConnectionGame {
         document.getElementById('gameOver').classList.add('hidden');
         
         this.init();
+        
+        // FIXED: Update power-up display after init
+        this.updatePowerupDisplay();
+        
         this.showMessage('New game started! Place your card!');
     }
 }
@@ -2933,6 +2948,7 @@ function showShop() {
 function closeShop() {
     SoundEffects.playButton();
     document.getElementById('shopModal').classList.remove('show');
+    game.updatePowerupDisplay();
 }
 
 function renderShopItems() {
