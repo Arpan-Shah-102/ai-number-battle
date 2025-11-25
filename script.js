@@ -786,16 +786,17 @@ class NumberConnectionGame {
         this.doublePointsActive = false;
 
         // FIXED: Game mode multipliers
-        this.gameModeMultipliers = {
-            classic: 1.0,
-            nobonus: 1.1,
-            survival: 1.25,
-            blitz: 1.0,
-            suddendeath: 3.0,
-            chainreaction: 0.8,
-            reverserules: 5.0,
-            mirrormatch: 1.5
-        };
+            this.gameModeMultipliers = {
+                classic: 1.0,
+                nobonus: 1.1,
+                survival: 1.25,
+                blitz: 2.5,
+                suddendeath: 3.0,
+                chainreaction: 0.8,
+                reverserules: 5.0,
+                mirrormatch: 1.5,
+                subtraction: 1.35 // NEW
+            };
 
         // NEW: AI difficulty multipliers
         this.aiDifficultyMultipliers = {
@@ -952,8 +953,9 @@ class NumberConnectionGame {
                     viewNext: 0,
                     undo: 0,
                     pickCard: 0,
-                    doublePoints: 0 // NEW
-                }
+                    doublePoints: 0
+                },
+                baseMultiplier: 0 // NEW: Base shop point multiplier levels
             }
         };
         
@@ -1133,11 +1135,12 @@ class NumberConnectionGame {
                 { value: 'classic', label: 'Classic', multiplier: 1.0 },
                 { value: 'nobonus', label: 'No Bonus', multiplier: 1.1 },
                 { value: 'survival', label: 'Survival', multiplier: 1.25 },
-                { value: 'blitz', label: 'Blitz', multiplier: 1.0 },
+                { value: 'blitz', label: 'Blitz', multiplier: 2.5 },
                 { value: 'suddendeath', label: 'Sudden Death', multiplier: 3.0 },
                 { value: 'chainreaction', label: 'Chain Reaction', multiplier: 0.8 },
                 { value: 'reverserules', label: 'Reverse Rules', multiplier: 5.0 },
-                { value: 'mirrormatch', label: 'Mirror Match', multiplier: 1.5 }
+                { value: 'mirrormatch', label: 'Mirror Match', multiplier: 1.5 },
+                { value: 'subtraction', label: 'Subtraction', multiplier: 1.35 } // NEW
             ];
             
             modes.forEach(mode => {
@@ -1675,6 +1678,8 @@ class NumberConnectionGame {
             this.showMessage('REVERSE RULES: Lowest score wins! 🔄');
         } else if (this.gameMode === 'mirrormatch') {
             this.showMessage('MIRROR MATCH: You and AI have the same cards! 🪞');
+        } else if (this.gameMode === 'subtraction') {
+            this.showMessage('SUBTRACTION: Claiming tiles subtracts opponent points! ➖');
         }
         
         requestAnimationFrame(() => {
@@ -2062,10 +2067,11 @@ class NumberConnectionGame {
     updateMultiplierDisplay() {
         const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
         const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
-        const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
+        const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
+        const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1; // NEW
         
         // FIXED: Add multipliers instead of multiplying
-        const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier;
+        const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus;
         
         const multiplierElement = document.getElementById('multipliersValue');
         if (multiplierElement) {
@@ -2699,6 +2705,35 @@ class NumberConnectionGame {
                         setTimeout(() => this.createCellPoints(index, points), 100);
                     }
                 });
+                
+                // NEW: Subtraction mode - subtract opponent's points
+                if (this.gameMode === 'subtraction' && totalPoints > 0) {
+                    if (owner === 'player') {
+                        // Subtract from AI
+                        const cellsToSubtract = Array.from(cellsToOwn).length;
+                        const previousAIScore = this.aiScore;
+                        this.aiScore = Math.max(0, this.aiScore - cellsToSubtract);
+                        
+                        if (previousAIScore !== this.aiScore) {
+                            this.updateScore('ai');
+                            const scoreCard = document.querySelector('.score-card.ai');
+                            const rect = scoreCard.getBoundingClientRect();
+                            this.createPointsPopup(-cellsToSubtract, rect.left + rect.width / 2 - 50, rect.top - 50, false);
+                        }
+                    } else if (owner === 'ai') {
+                        // Subtract from player
+                        const cellsToSubtract = Array.from(cellsToOwn).length;
+                        const previousPlayerScore = this.playerScore;
+                        this.playerScore = Math.max(0, this.playerScore - cellsToSubtract);
+                        
+                        if (previousPlayerScore !== this.playerScore) {
+                            this.updateScore('player');
+                            const scoreCard = document.querySelector('.score-card.player');
+                            const rect = scoreCard.getBoundingClientRect();
+                            this.createPointsPopup(-cellsToSubtract, rect.left + rect.width / 2 - 50, rect.top - 50, true);
+                        }
+                    }
+                }
             }, 100);
         }
 
@@ -2954,20 +2989,21 @@ class NumberConnectionGame {
             let pointsEarned = 0;
             if (playerWon) {
                 this.stats.wins++;
-                // FIXED: Add multipliers together instead of multiplying them
+                // FIXED: Add base multiplier to calculation
                 const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
                 const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
                 const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
+                const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1; // NEW: 0.1x per level
                 
                 // Add multipliers: base (1.0) + bonuses
-                const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier;
+                const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus;
                 
                 // FIXED: Ensure we always get a valid number
                 const basePoints = this.playerScore * 0.1;
                 pointsEarned = Math.round(basePoints * totalMultiplier * 10) / 10;
                 
                 // Ensure pointsEarned is never NaN
-                if (isNaN(pointsEarned)) {
+                if (isNaN(pointsEarned) || pointsEarned < 0) {
                     pointsEarned = 0;
                 }
                 
@@ -2994,10 +3030,7 @@ class NumberConnectionGame {
                     winnerText.style.color = '#4CAF50';
                     SoundEffects.playWin();
                     
-                    const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
-                    const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
-                    const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
-                    const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier;
+                    const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
                     
                     // Get difficulty name
                     const difficultyNames = {
@@ -3014,10 +3047,13 @@ class NumberConnectionGame {
                     
                     const modeName = this.gameMode.charAt(0).toUpperCase() + this.gameMode.slice(1).replace(/([A-Z])/g, ' $1');
                     
-                    // FIXED: Show addition instead of multiplication
-                    let multiplierText = `Mode: ${gameModeMultiplier}x, AI: ${aiDifficultyMultiplier}x`;
+                    // FIXED: Show addition with base multiplier
+                    let multiplierText = `Mode: ${gameModeMultiplier.toFixed(2)}x, AI: ${aiDifficultyMultiplier.toFixed(2)}x`;
+                    if (baseMultiplierBonus > 0) {
+                        multiplierText += `, Base: +${baseMultiplierBonus.toFixed(2)}x`;
+                    }
                     if (this.doublePointsActive) {
-                        multiplierText += `, 💎: +${doublePointsMultiplier}x`;
+                        multiplierText += `, 💎: +${doublePointsMultiplier.toFixed(2)}x`;
                     }
                     multiplierText += ` = ${totalMultiplier.toFixed(2)}x total`;
                     
@@ -3270,10 +3306,11 @@ function renderShopItems() {
     modeContainer.innerHTML = '';
 
     const modes = [
-        { value: 'blitz', name: 'Blitz', price: 3, multiplier: 1.0 },
+        { value: 'blitz', name: 'Blitz', price: 3, multiplier: 2.5 },
         { value: 'suddendeath', name: 'Sudden Death', price: 10, multiplier: 3.0 },
         { value: 'chainreaction', name: 'Chain Reaction', price: 20, multiplier: 0.8 },
-        { value: 'reverserules', name: 'Reverse Rules', price: 35, multiplier: 5.0 },
+        { value: 'reverserules', name: 'Reverse Rules', price: 30, multiplier: 5.0 }, // FIXED: Changed from 35 to 30
+        { value: 'subtraction', name: 'Subtraction', price: 40, multiplier: 1.35 }, // NEW
         { value: 'mirrormatch', name: 'Mirror Match', price: 50, multiplier: 1.5 }
     ];
 
@@ -3345,6 +3382,33 @@ function renderShopItems() {
         `;
         iconContainer.appendChild(div);
     });
+
+    // NEW: Base Multiplier
+    const baseMultiplierContainer = document.getElementById('baseMultiplierShopItems');
+    if (baseMultiplierContainer) {
+        baseMultiplierContainer.innerHTML = '';
+        
+        const currentLevel = game.shop.owned.baseMultiplier || 0;
+        const basePrice = 100;
+        const priceIncrease = 50;
+        const nextPrice = basePrice + (currentLevel * priceIncrease);
+        const currentBonus = currentLevel * 0.1;
+        const nextBonus = (currentLevel + 1) * 0.1;
+        
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        div.innerHTML = `
+            <div class="shop-item-name">⭐ Base Multiplier</div>
+            <div class="shop-item-desc">Current: +${currentBonus.toFixed(1)}x | Next: +${nextBonus.toFixed(1)}x</div>
+            <div class="shop-item-multiplier">Level ${currentLevel} → ${currentLevel + 1}</div>
+            <div class="shop-item-price">${nextPrice} pts</div>
+            <button onclick="buyBaseMultiplier(${nextPrice})" 
+                    ${game.shop.points < nextPrice ? 'disabled' : ''}>
+                Buy Upgrade
+            </button>
+        `;
+        baseMultiplierContainer.appendChild(div);
+    }
 }
 
 function buyPowerup(type, price) {
@@ -3454,6 +3518,31 @@ function buyPermanentPowerup(type, price) {
     
     SoundEffects.playUnlock();
     alert(`✨ Permanent bonus purchased! You'll now start every game with +${game.shop.owned.permanentPowerups[type]} of this power-up!`);
+}
+function buyBaseMultiplier(price) {
+    if (game.shop.points < price) {
+        alert('Not enough points!');
+        return;
+    }
+    
+    if (!game.shop.owned.baseMultiplier) {
+        game.shop.owned.baseMultiplier = 0;
+    }
+    
+    game.shop.points -= price;
+    game.shop.owned.baseMultiplier++;
+    
+    game.saveShop();
+    game.updateMultiplierDisplay();
+    game.updateStatsDisplay();
+    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    renderShopItems();
+    
+    const newLevel = game.shop.owned.baseMultiplier;
+    const newBonus = newLevel * 0.1;
+    
+    SoundEffects.playUnlock();
+    alert(`✨ Base Multiplier upgraded to Level ${newLevel}!\nYou now get +${newBonus.toFixed(1)}x on ALL shop point earnings!`);
 }
 
 function buyPermanent(type, value, price) {

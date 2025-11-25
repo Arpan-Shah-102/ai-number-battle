@@ -1533,3 +1533,8 @@ button.warning {
   color: #4CAF50;
   transition: all 0.3s;
 }
+.points-popup.subtraction {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.2);
+  border: 3px solid #f44336;
+}
