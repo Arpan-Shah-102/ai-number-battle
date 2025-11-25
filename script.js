@@ -780,8 +780,9 @@ class NumberConnectionGame {
         this.pickCardAvailable = defaults.pickCard + permanentBonuses.pickCard + shopConsumables.pickCard;
         this.pickCardConsumable = shopConsumables.pickCard;
 
-        this.doublePointsAvailable = defaults.doublePoints + permanentBonuses.doublePoints + shopConsumables.doublePoints;
-        this.doublePointsConsumable = shopConsumables.doublePoints;
+        // FIXED: Ensure doublePoints is always initialized
+        this.doublePointsAvailable = (defaults.doublePoints || 0) + (permanentBonuses.doublePoints || 0) + (shopConsumables.doublePoints || 0);
+        this.doublePointsConsumable = shopConsumables.doublePoints || 0;
         this.doublePointsActive = false;
 
         // FIXED: Game mode multipliers
@@ -1011,7 +1012,16 @@ class NumberConnectionGame {
         const saved = localStorage.getItem('shopConsumables');
         if (saved) {
             try {
-                return JSON.parse(saved);
+                const consumables = JSON.parse(saved);
+                // FIXED: Ensure all properties exist with default values
+                return {
+                    skipAI: consumables.skipAI || 0,
+                    replace: consumables.replace || 0,
+                    viewNext: consumables.viewNext || 0,
+                    undo: consumables.undo || 0,
+                    pickCard: consumables.pickCard || 0,
+                    doublePoints: consumables.doublePoints || 0
+                };
             } catch (e) {
                 console.warn('Corrupted shop consumables, resetting...');
                 localStorage.removeItem('shopConsumables');
@@ -2029,24 +2039,25 @@ class NumberConnectionGame {
         const viewNextBtn = document.getElementById('viewNextBtn');
         const undoBtn = document.getElementById('undoBtn');
         const pickCardBtn = document.getElementById('pickCardBtn');
-        const doublePointsBtn = document.getElementById('doublePointsBtn'); // NEW
+        const doublePointsBtn = document.getElementById('doublePointsBtn');
         
-        document.getElementById('skipAiCount').textContent = this.skipAIAvailable;
-        document.getElementById('replaceCardCount').textContent = this.replaceCardAvailable;
-        document.getElementById('viewNextCount').textContent = this.viewNextAvailable;
-        document.getElementById('undoCount').textContent = this.undoAvailable;
-        document.getElementById('pickCardCount').textContent = this.pickCardAvailable;
-        document.getElementById('doublePointsCount').textContent = this.doublePointsAvailable; // NEW
+        // FIXED: Ensure all counts are valid numbers
+        document.getElementById('skipAiCount').textContent = this.skipAIAvailable || 0;
+        document.getElementById('replaceCardCount').textContent = this.replaceCardAvailable || 0;
+        document.getElementById('viewNextCount').textContent = this.viewNextAvailable || 0;
+        document.getElementById('undoCount').textContent = this.undoAvailable || 0;
+        document.getElementById('pickCardCount').textContent = this.pickCardAvailable || 0;
+        document.getElementById('doublePointsCount').textContent = this.doublePointsAvailable || 0; // FIXED
         
         const isSurvival = this.gameMode === 'survival';
         const isBlitz = this.gameMode === 'blitz';
         
-        skipBtn.disabled = this.skipAIAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || isBlitz;
-        replaceBtn.disabled = this.replaceCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
-        viewNextBtn.disabled = this.viewNextAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.playerDeck.length === 0;
-        undoBtn.disabled = this.undoAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || !this.undoState;
-        pickCardBtn.disabled = this.pickCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
-        doublePointsBtn.disabled = this.doublePointsAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.doublePointsActive; // NEW
+        if (skipBtn) skipBtn.disabled = this.skipAIAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || isBlitz;
+        if (replaceBtn) replaceBtn.disabled = this.replaceCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
+        if (viewNextBtn) viewNextBtn.disabled = this.viewNextAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.playerDeck.length === 0;
+        if (undoBtn) undoBtn.disabled = this.undoAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || !this.undoState;
+        if (pickCardBtn) pickCardBtn.disabled = this.pickCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
+        if (doublePointsBtn) doublePointsBtn.disabled = this.doublePointsAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.doublePointsActive; // FIXED
     }
     updateMultiplierDisplay() {
         const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
@@ -3066,26 +3077,27 @@ class NumberConnectionGame {
             viewNext: 1,
             undo: 1,
             pickCard: 0,
-            doublePoints: 0
+            doublePoints: 0 // FIXED: Ensure this exists
         };
-        
+
         this.skipAIAvailable = defaults.skipAI + permanentBonuses.skipAI + shopConsumables.skipAI;
         this.skipAIConsumable = shopConsumables.skipAI;
-        
+
         this.replaceCardAvailable = defaults.replace + permanentBonuses.replace + shopConsumables.replace;
         this.replaceCardConsumable = shopConsumables.replace;
-        
+
         this.viewNextAvailable = defaults.viewNext + permanentBonuses.viewNext + shopConsumables.viewNext;
         this.viewNextConsumable = shopConsumables.viewNext;
-        
+
         this.undoAvailable = defaults.undo + permanentBonuses.undo + shopConsumables.undo;
         this.undoConsumable = shopConsumables.undo;
-        
+
         this.pickCardAvailable = defaults.pickCard + permanentBonuses.pickCard + shopConsumables.pickCard;
         this.pickCardConsumable = shopConsumables.pickCard;
-        
-        this.doublePointsAvailable = defaults.doublePoints + permanentBonuses.doublePoints + shopConsumables.doublePoints;
-        this.doublePointsConsumable = shopConsumables.doublePoints;
+
+        // FIXED: Ensure doublePoints is properly initialized
+        this.doublePointsAvailable = (defaults.doublePoints || 0) + (permanentBonuses.doublePoints || 0) + (shopConsumables.doublePoints || 0);
+        this.doublePointsConsumable = shopConsumables.doublePoints || 0;
         
         // Only reset game-specific states
         this.skipAIUsed = false;
