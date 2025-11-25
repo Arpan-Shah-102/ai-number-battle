@@ -70,6 +70,12 @@
                             <div class="next-card-preview" id="nextCardPreview">Next: ?</div>
                         </div>
                     </div>
+
+                    <!-- NEW: Current Multipliers Display -->
+                    <div class="current-multipliers" id="currentMultipliers">
+                        <div class="multipliers-title">Shop Points Multiplier</div>
+                        <div class="multipliers-value" id="multipliersValue">1.0x</div>
+                    </div>
                     
                     <!-- NEW: Power-ups Menu moved outside and below -->
                     <div class="powerups-activator" id="powerupsActivator">
@@ -120,14 +126,14 @@
                 <div class="setting-group">
                     <label for="difficultySelect">AI Difficulty:</label>
                     <select id="difficultySelect" onchange="game.changeDifficulty(this.value)">
-                        <option value="0.2">Novice</option>
-                        <option value="0.3">Beginner</option>
-                        <option value="0.4" selected>Intermediate</option>
-                        <option value="0.5">Skilled</option>
-                        <option value="0.6">Advanced</option>
-                        <option value="0.7">Expert</option>
-                        <option value="0.8">Pro</option>
-                        <option value="0.9">Master</option>
+                        <option value="0.2">Novice (0.5x)</option>
+                        <option value="0.3">Beginner (0.75x)</option>
+                        <option value="0.4" selected>Intermediate (1.0x)</option>
+                        <option value="0.5">Skilled (1.1x)</option>
+                        <option value="0.6">Advanced (1.2x)</option>
+                        <option value="0.7">Expert (1.3x)</option>
+                        <option value="0.8">Pro (1.4x)</option>
+                        <option value="0.9">Master (1.5x)</option>
                     </select>
                 </div>
 
@@ -144,10 +150,14 @@
                 <div class="setting-group">
                     <label for="gamemodeSelect">Game Mode:</label>
                     <select id="gamemodeSelect" onchange="changeGameMode(this.value)">
-                        <option value="classic" selected>Classic (Take turns)</option>
-                        <option value="nobonus">No Bonus (No end bonus points)</option>
-                        <option value="survival">Survival (No powerups)</option>
-                        <option value="blitz">Blitz (Race mode!)</option>
+                        <option value="classic" selected>Classic (1.0x)</option>
+                        <option value="nobonus">No Bonus (1.1x)</option>
+                        <option value="survival">Survival (1.25x)</option>
+                        <option value="blitz">Blitz (1.0x)</option>
+                        <option value="suddendeath">Sudden Death (3.0x)</option>
+                        <option value="chainreaction">Chain Reaction (0.8x)</option>
+                        <option value="reverserules">Reverse Rules (5.0x)</option>
+                        <option value="mirrormatch">Mirror Match (1.5x)</option>
                     </select>
                 </div>
 
@@ -251,6 +261,21 @@
                 <div class="shop-points-display">
                     <div class="points-label">Your Shop Points</div>
                     <div class="points-value" id="shopPointsDisplay">0</div>
+                </div>
+
+                <!-- NEW: Multiplier Info Section -->
+                <div class="shop-info-section">
+                    <h3>💡 Shop Point Multipliers</h3>
+                    <p>Win games to earn shop points! Your earnings are multiplied by:</p>
+                    <ul class="multiplier-list">
+                        <li><strong>Game Mode:</strong> Each mode has a different multiplier (0.8x to 5.0x)</li>
+                        <li><strong>AI Difficulty:</strong> Harder AI = more points (0.5x to 1.5x)</li>
+                        <li><strong>💎 Double Points Power-up:</strong> Adds +2.0x to total</li>
+                        <li><strong>Total:</strong> All multipliers are added together!</li>
+                    </ul>
+                    <div class="multiplier-example">
+                        Example: Win on Reverse Rules (5x) + Master AI (1.5x) + Double Points (+2x) = 6.5x total!
+                    </div>
                 </div>
 
                 <div class="shop-section">

@@ -739,19 +739,74 @@ class NumberConnectionGame {
         this.turnCount = 0;
         this.extraTurn = false;
 
-        // FIXED: Power-ups persist between games - load from storage or initialize with defaults
-        const savedPowerups = this.loadPowerupState();
-        this.skipAIAvailable = savedPowerups.skipAI;
+        // FIXED: Separate consumable shop power-ups from defaults
+        const shopConsumables = this.loadShopConsumables();
+        const permanentBonuses = this.shop.owned.permanentPowerups || {
+            skipAI: 0,
+            replace: 0,
+            viewNext: 0,
+            undo: 0,
+            pickCard: 0,
+            doublePoints: 0
+        };
+
+        // Default amounts per game
+        const defaults = {
+            skipAI: 1,
+            replace: 3,
+            viewNext: 1,
+            undo: 1,
+            pickCard: 0,
+            doublePoints: 0
+        };
+
+        // Total available = defaults + permanent + shop consumables
+        this.skipAIAvailable = defaults.skipAI + permanentBonuses.skipAI + shopConsumables.skipAI;
+        this.skipAIConsumable = shopConsumables.skipAI;
         this.skipAIUsed = false;
-        this.replaceCardAvailable = savedPowerups.replace;
-        this.viewNextAvailable = savedPowerups.viewNext;
+
+        this.replaceCardAvailable = defaults.replace + permanentBonuses.replace + shopConsumables.replace;
+        this.replaceCardConsumable = shopConsumables.replace;
+
+        this.viewNextAvailable = defaults.viewNext + permanentBonuses.viewNext + shopConsumables.viewNext;
+        this.viewNextConsumable = shopConsumables.viewNext;
         this.viewNextActive = false;
         this.viewNextUsedOnTurn = null;
-        this.undoAvailable = savedPowerups.undo;
+
+        this.undoAvailable = defaults.undo + permanentBonuses.undo + shopConsumables.undo;
+        this.undoConsumable = shopConsumables.undo;
         this.undoState = null;
-        this.pickCardAvailable = savedPowerups.pickCard;
-        this.doublePointsAvailable = savedPowerups.doublePoints;
+
+        this.pickCardAvailable = defaults.pickCard + permanentBonuses.pickCard + shopConsumables.pickCard;
+        this.pickCardConsumable = shopConsumables.pickCard;
+
+        this.doublePointsAvailable = defaults.doublePoints + permanentBonuses.doublePoints + shopConsumables.doublePoints;
+        this.doublePointsConsumable = shopConsumables.doublePoints;
         this.doublePointsActive = false;
+
+        // FIXED: Game mode multipliers
+        this.gameModeMultipliers = {
+            classic: 1.0,
+            nobonus: 1.1,
+            survival: 1.25,
+            blitz: 1.0,
+            suddendeath: 3.0,
+            chainreaction: 0.8,
+            reverserules: 5.0,
+            mirrormatch: 1.5
+        };
+
+        // NEW: AI difficulty multipliers
+        this.aiDifficultyMultipliers = {
+            0.2: 0.5,   // Novice
+            0.3: 0.75,  // Beginner
+            0.4: 1.0,   // Intermediate
+            0.5: 1.1,   // Skilled
+            0.6: 1.2,   // Advanced
+            0.7: 1.3,   // Expert
+            0.8: 1.4,   // Pro
+            0.9: 1.5    // Master
+        };
 
         this.applyTheme(this.currentTheme);
         this.applyIconPack(this.currentIconPack);
@@ -952,6 +1007,49 @@ class NumberConnectionGame {
         
         return result;
     }
+    loadShopConsumables() {
+        const saved = localStorage.getItem('shopConsumables');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.warn('Corrupted shop consumables, resetting...');
+                localStorage.removeItem('shopConsumables');
+            }
+        }
+        
+        return {
+            skipAI: 0,
+            replace: 0,
+            viewNext: 0,
+            undo: 0,
+            pickCard: 0,
+            doublePoints: 0
+        };
+    }
+
+    saveShopConsumables() {
+        const consumables = {
+            skipAI: this.skipAIConsumable,
+            replace: this.replaceCardConsumable,
+            viewNext: this.viewNextConsumable,
+            undo: this.undoConsumable,
+            pickCard: this.pickCardConsumable,
+            doublePoints: this.doublePointsConsumable
+        };
+        localStorage.setItem('shopConsumables', JSON.stringify(consumables));
+    }
+
+    useConsumablePowerup(type) {
+        // Check if we have shop consumables first, otherwise use default/permanent
+        const consumableKey = type + 'Consumable';
+        if (this[consumableKey] > 0) {
+            this[consumableKey]--;
+            this.saveShopConsumables();
+            return true;
+        }
+        return true; // Still allow using default/permanent
+    }
 
     savePowerupState() {
         const powerups = {
@@ -1022,21 +1120,22 @@ class NumberConnectionGame {
         if (modeSelect) {
             modeSelect.innerHTML = '';
             const modes = [
-                { value: 'classic', label: 'Classic (Take turns)' },
-                { value: 'nobonus', label: 'No Bonus (No end bonus points)' },
-                { value: 'survival', label: 'Survival (No powerups)' },
-                { value: 'blitz', label: 'Blitz (Race mode!)' },
-                { value: 'suddendeath', label: 'Sudden Death' },
-                { value: 'chainreaction', label: 'Chain Reaction' },
-                { value: 'reverserules', label: 'Reverse Rules' },
-                { value: 'mirrormatch', label: 'Mirror Match' }
+                { value: 'classic', label: 'Classic', multiplier: 1.0 },
+                { value: 'nobonus', label: 'No Bonus', multiplier: 1.1 },
+                { value: 'survival', label: 'Survival', multiplier: 1.25 },
+                { value: 'blitz', label: 'Blitz', multiplier: 1.0 },
+                { value: 'suddendeath', label: 'Sudden Death', multiplier: 3.0 },
+                { value: 'chainreaction', label: 'Chain Reaction', multiplier: 0.8 },
+                { value: 'reverserules', label: 'Reverse Rules', multiplier: 5.0 },
+                { value: 'mirrormatch', label: 'Mirror Match', multiplier: 1.5 }
             ];
             
             modes.forEach(mode => {
                 if (this.shop.owned.modes && this.shop.owned.modes.includes(mode.value)) {
                     const option = document.createElement('option');
                     option.value = mode.value;
-                    option.textContent = mode.label;
+                    // FIXED: Only show name and multiplier
+                    option.textContent = `${mode.label} (${mode.multiplier}x)`;
                     if (mode.value === this.gameMode) {
                         option.selected = true;
                     }
@@ -1050,21 +1149,22 @@ class NumberConnectionGame {
         if (difficultySelect) {
             difficultySelect.innerHTML = '';
             const difficulties = [
-                { value: '0.2', label: 'Novice' },
-                { value: '0.3', label: 'Beginner' },
-                { value: '0.4', label: 'Intermediate' },
-                { value: '0.5', label: 'Skilled' },
-                { value: '0.6', label: 'Advanced' },
-                { value: '0.7', label: 'Expert' },
-                { value: '0.8', label: 'Pro' },
-                { value: '0.9', label: 'Master' }
+                { value: '0.2', label: 'Novice', multiplier: 0.5 },
+                { value: '0.3', label: 'Beginner', multiplier: 0.75 },
+                { value: '0.4', label: 'Intermediate', multiplier: 1.0 },
+                { value: '0.5', label: 'Skilled', multiplier: 1.1 },
+                { value: '0.6', label: 'Advanced', multiplier: 1.2 },
+                { value: '0.7', label: 'Expert', multiplier: 1.3 },
+                { value: '0.8', label: 'Pro', multiplier: 1.4 },
+                { value: '0.9', label: 'Master', multiplier: 1.5 }
             ];
             
             difficulties.forEach(diff => {
                 if (this.shop.owned.aiLevels && this.shop.owned.aiLevels.includes(diff.value)) {
                     const option = document.createElement('option');
                     option.value = diff.value;
-                    option.textContent = diff.label;
+                    // FIXED: Consistent format
+                    option.textContent = `${diff.label} (${diff.multiplier}x)`;
                     if (parseFloat(diff.value) === this.aiDifficulty) {
                         option.selected = true;
                     }
@@ -1207,6 +1307,7 @@ class NumberConnectionGame {
         
         this.aiDifficulty = parseFloat(value);
         this.saveDifficulty();
+        this.updateMultiplierDisplay();
     }
 
     changeBoardSize(value) {
@@ -1240,11 +1341,12 @@ class NumberConnectionGame {
         
         this.gameMode = value;
         this.saveGameMode(value);
+        this.updateMultiplierDisplay();
         closeSettings();
         this.showMessage(`Game mode changed to ${value}! Starting new game...`);
         setTimeout(() => {
             this.newGame();
-        }, 1500);
+        }, 500);
     }
 
     toggleSFX(enabled) {
@@ -1364,6 +1466,7 @@ class NumberConnectionGame {
         }
         
         this.undoAvailable--;
+        this.useConsumablePowerup('undo'); // FIXED
         
         if (this.gameMode === 'blitz') {
             this.stopBlitzMode();
@@ -1388,7 +1491,6 @@ class NumberConnectionGame {
         
         this.updateMap();
         this.updatePowerupDisplay();
-        this.savePowerupState(); // NEW
         
         this.isPlayerTurn = true;
         this.enablePlayerInput();
@@ -1404,10 +1506,10 @@ class NumberConnectionGame {
     usePickCard() {
         if (this.pickCardAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.gameMode !== 'survival') {
             this.pickCardAvailable--;
+            this.useConsumablePowerup('pickCard'); // FIXED
             
             const maxNum = IconPackMaxNumbers[this.currentIconPack] || 10;
             
-            // Show a simple prompt for card selection
             let selectedCard = null;
             let validInput = false;
             
@@ -1415,8 +1517,8 @@ class NumberConnectionGame {
                 const input = prompt(`Pick any card (0-${maxNum - 1}):`);
                 
                 if (input === null) {
-                    // User cancelled
                     this.pickCardAvailable++;
+                    this.pickCardConsumable++;
                     return;
                 }
                 
@@ -1429,7 +1531,6 @@ class NumberConnectionGame {
                 }
             }
             
-            // Replace current card with selected card
             if (this.currentPlayerCard !== null) {
                 this.playerDeck.push(this.currentPlayerCard);
             }
@@ -1445,25 +1546,26 @@ class NumberConnectionGame {
             this.showMessage(`🎯 Picked card: ${IconPacks[this.currentIconPack](selectedCard)}!`);
             SoundEffects.playPowerup();
             this.updatePowerupDisplay();
-            this.savePowerupState(); // NEW
         }
     }
     useDoublePoints() {
         if (this.doublePointsAvailable > 0 && this.isPlayerTurn && !this.gameEnded && 
             this.gameMode !== 'survival' && !this.doublePointsActive) {
             this.doublePointsAvailable--;
+            this.useConsumablePowerup('doublePoints');
             this.doublePointsActive = true;
             
-            this.showMessage("💎 DOUBLE POINTS activated for this game!");
+            this.showMessage("💎 DOUBLE SHOP POINTS activated for this game!");
             SoundEffects.playPowerup();
             this.updatePowerupDisplay();
-            this.savePowerupState(); // NEW
+            this.updateMultiplierDisplay();
             
-            // Show visual indicator on score card
+            // FIXED: Update indicator text
             const playerScoreCard = document.querySelector('.score-card.player');
             const indicator = document.createElement('div');
             indicator.className = 'double-points-indicator';
-            indicator.textContent = '💎 2X';
+            indicator.textContent = '💎 Shop 2X';
+            indicator.title = 'Double shop points for this game!';
             playerScoreCard.appendChild(indicator);
         }
     }
@@ -1471,6 +1573,7 @@ class NumberConnectionGame {
     useViewNext() {
         if (this.viewNextAvailable > 0 && !this.gameEnded && this.gameMode !== 'survival' && this.playerDeck.length > 0 && this.isPlayerTurn) {
             this.viewNextAvailable--;
+            this.useConsumablePowerup('viewNext'); // FIXED
             this.viewNextActive = true;
             this.viewNextUsedOnTurn = this.turnCount;
             
@@ -1480,7 +1583,6 @@ class NumberConnectionGame {
             preview.classList.add('show');
             
             this.updatePowerupDisplay();
-            this.savePowerupState(); // NEW
             this.showMessage(`👁️ Next card revealed: ${IconPacks[this.currentIconPack](nextCard)}`);
             SoundEffects.playPowerup();
         }
@@ -1489,9 +1591,9 @@ class NumberConnectionGame {
     useSkipAI() {
         if (this.skipAIAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.gameMode !== 'survival' && this.gameMode !== 'blitz') {
             this.skipAIAvailable--;
+            this.useConsumablePowerup('skipAI'); // FIXED
             this.skipAIUsed = true;
             this.updatePowerupDisplay();
-            this.savePowerupState(); // NEW
             this.showMessage("⏭️ AI's next turn will be skipped!");
             SoundEffects.playPowerup();
         }
@@ -1500,6 +1602,7 @@ class NumberConnectionGame {
     useReplaceCard() {
         if (this.replaceCardAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.currentPlayerCard !== null && this.gameMode !== 'survival') {
             this.replaceCardAvailable--;
+            this.useConsumablePowerup('replace'); // FIXED
             
             const oldCard = this.currentPlayerCard;
             this.playerDeck.push(this.currentPlayerCard);
@@ -1535,7 +1638,6 @@ class NumberConnectionGame {
             }
             
             this.updatePowerupDisplay();
-            this.savePowerupState(); // NEW
         }
     }
 
@@ -1548,6 +1650,7 @@ class NumberConnectionGame {
         this.setupTouch();
         this.setupHoverEffects();
         this.updatePowerupDisplay(); // FIXED: Ensure this is called
+        this.updateMultiplierDisplay();
         
         let modeName = this.gameMode.charAt(0).toUpperCase() + this.gameMode.slice(1);
         if (this.gameMode === 'blitz') {
@@ -1945,6 +2048,34 @@ class NumberConnectionGame {
         pickCardBtn.disabled = this.pickCardAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival;
         doublePointsBtn.disabled = this.doublePointsAvailable === 0 || !this.isPlayerTurn || this.gameEnded || isSurvival || this.doublePointsActive; // NEW
     }
+    updateMultiplierDisplay() {
+        const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
+        const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
+        const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
+        
+        // FIXED: Add multipliers instead of multiplying
+        const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier;
+        
+        const multiplierElement = document.getElementById('multipliersValue');
+        if (multiplierElement) {
+            multiplierElement.textContent = `${totalMultiplier.toFixed(2)}x`;
+            
+            // Add visual indicator if multiplier is high
+            if (totalMultiplier >= 8.0) {
+                multiplierElement.style.color = '#FF4500';
+                multiplierElement.style.fontSize = '1.3em';
+            } else if (totalMultiplier >= 5.0) {
+                multiplierElement.style.color = '#FF9800';
+                multiplierElement.style.fontSize = '1.2em';
+            } else if (totalMultiplier >= 3.0) {
+                multiplierElement.style.color = '#FFD700';
+                multiplierElement.style.fontSize = '1.1em';
+            } else {
+                multiplierElement.style.color = '#4CAF50';
+                multiplierElement.style.fontSize = '1em';
+            }
+        }
+    }
 
     createFloatingCard(number, startX, startY, endX, endY, isPlayer) {
         const card = document.createElement('div');
@@ -2193,22 +2324,15 @@ class NumberConnectionGame {
             let basePoints = this.calculatePoints(cellIndex, playedCard, 'player');
             
             if (basePoints > 0) {
-                // NEW: Apply double points multiplier
-                let finalPoints = this.doublePointsActive ? basePoints * 2 : basePoints;
-                
-                this.playerScore += finalPoints;
+                this.playerScore += basePoints;
                 this.updateScore('player');
                 
                 const scoreCard = document.querySelector('.score-card.player');
                 const rect = scoreCard.getBoundingClientRect();
-                this.createPointsPopup(finalPoints, rect.left + rect.width / 2 - 50, rect.top - 50, true);
+                this.createPointsPopup(basePoints, rect.left + rect.width / 2 - 50, rect.top - 50, true);
                 
-                // NEW: Show appropriate message
-                if (this.doublePointsActive) {
-                    this.showMessage(`🎉 You scored ${basePoints} × 2 = ${finalPoints} points! 💎`);
-                } else {
-                    this.showMessage(`🎉 You scored ${finalPoints} point${finalPoints !== 1 ? 's' : ''}!`);
-                }
+                // FIXED: No special message for double points since it doesn't affect score
+                this.showMessage(`🎉 You scored ${basePoints} point${basePoints !== 1 ? 's' : ''}!`);
                 SoundEffects.playScore();
                 
                 // FIXED: Force map update before checking sudden death
@@ -2462,6 +2586,7 @@ class NumberConnectionGame {
     }
 
     calculatePoints(cellIndex, number, owner) {
+        // FIXED: Remove double points from here - it only affects shop points
         return this.calculatePointsForState(cellIndex, number, owner, this.mapState, true);
     }
 
@@ -2786,13 +2911,9 @@ class NumberConnectionGame {
 
         setTimeout(() => {
             if (!isNoBonus) {
-                // FIXED: Apply double points to bonus as well
+                // FIXED: Don't apply double points to score, only to shop points later
                 let playerBonusPoints = playerCells;
                 let aiBonusPoints = aiCells;
-                
-                if (this.doublePointsActive) {
-                    playerBonusPoints = playerCells * 2;
-                }
                 
                 this.playerScore += playerBonusPoints;
                 this.aiScore += aiBonusPoints;
@@ -2800,11 +2921,7 @@ class NumberConnectionGame {
                 this.updateScore('player');
                 this.updateScore('ai');
 
-                if (this.doublePointsActive) {
-                    this.showMessage(`Game Over! Bonus: You +${playerCells} × 2 = ${playerBonusPoints}, AI +${aiBonusPoints}`);
-                } else {
-                    this.showMessage(`Game Over! Bonus: You +${playerBonusPoints}, AI +${aiBonusPoints}`);
-                }
+                this.showMessage(`Game Over! Bonus: You +${playerBonusPoints}, AI +${aiBonusPoints}`);
             } else {
                 this.showMessage(`Game Over! No bonus points in this mode.`);
             }
@@ -2826,8 +2943,23 @@ class NumberConnectionGame {
             let pointsEarned = 0;
             if (playerWon) {
                 this.stats.wins++;
-                // Only award points if player wins
-                pointsEarned = Math.floor(this.playerScore * 0.1 * 10) / 10; // 0.1 points per score point
+                // FIXED: Add multipliers together instead of multiplying them
+                const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
+                const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
+                const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
+                
+                // Add multipliers: base (1.0) + bonuses
+                const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier;
+                
+                // FIXED: Ensure we always get a valid number
+                const basePoints = this.playerScore * 0.1;
+                pointsEarned = Math.round(basePoints * totalMultiplier * 10) / 10;
+                
+                // Ensure pointsEarned is never NaN
+                if (isNaN(pointsEarned)) {
+                    pointsEarned = 0;
+                }
+                
                 this.shop.points += pointsEarned;
                 this.saveShop();
             } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
@@ -2850,16 +2982,47 @@ class NumberConnectionGame {
                     winnerText.textContent = '🎉 YOU WIN! 🎉';
                     winnerText.style.color = '#4CAF50';
                     SoundEffects.playWin();
-                    shopPointsEarned.textContent = `💰 Earned ${pointsEarned} shop points!`;
+                    
+                    const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
+                    const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
+                    const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
+                    const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier;
+                    
+                    // Get difficulty name
+                    const difficultyNames = {
+                        0.2: 'Novice',
+                        0.3: 'Beginner',
+                        0.4: 'Intermediate',
+                        0.5: 'Skilled',
+                        0.6: 'Advanced',
+                        0.7: 'Expert',
+                        0.8: 'Pro',
+                        0.9: 'Master'
+                    };
+                    const difficultyName = difficultyNames[this.aiDifficulty] || 'Unknown';
+                    
+                    const modeName = this.gameMode.charAt(0).toUpperCase() + this.gameMode.slice(1).replace(/([A-Z])/g, ' $1');
+                    
+                    // FIXED: Show addition instead of multiplication
+                    let multiplierText = `Mode: ${gameModeMultiplier}x, AI: ${aiDifficultyMultiplier}x`;
+                    if (this.doublePointsActive) {
+                        multiplierText += `, 💎: +${doublePointsMultiplier}x`;
+                    }
+                    multiplierText += ` = ${totalMultiplier.toFixed(2)}x total`;
+                    
+                    shopPointsEarned.textContent = `💰 Earned ${pointsEarned.toFixed(1)} shop points!\n${modeName} (${difficultyName})\n${multiplierText}`;
+                    shopPointsEarned.style.whiteSpace = 'pre-line';
                 } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
                     winnerText.textContent = '🤖 AI WINS! 🤖';
                     winnerText.style.color = '#f44336';
                     shopPointsEarned.textContent = `No points earned - you lost!`;
+                    shopPointsEarned.style.whiteSpace = 'normal';
                     SoundEffects.playLose();
                 } else {
                     winnerText.textContent = '🤝 TIE GAME! 🤝';
                     winnerText.style.color = '#FF9800';
                     shopPointsEarned.textContent = `No points earned - it's a tie!`;
+                    shopPointsEarned.style.whiteSpace = 'normal';
                 }
 
                 document.getElementById('finalPlayerScore').textContent = this.playerScore;
@@ -2886,14 +3049,43 @@ class NumberConnectionGame {
         this.hoveredCellIndex = null;
         this.draggedOverCellIndex = null;
         
-        // FIXED: Reload power-up state from storage to ensure persistence
-        const savedPowerups = this.loadPowerupState();
-        this.skipAIAvailable = savedPowerups.skipAI;
-        this.replaceCardAvailable = savedPowerups.replace;
-        this.viewNextAvailable = savedPowerups.viewNext;
-        this.undoAvailable = savedPowerups.undo;
-        this.pickCardAvailable = savedPowerups.pickCard;
-        this.doublePointsAvailable = savedPowerups.doublePoints;
+        // FIXED: Reset to defaults + permanent + keep shop consumables
+        const shopConsumables = this.loadShopConsumables();
+        const permanentBonuses = this.shop.owned.permanentPowerups || {
+            skipAI: 0,
+            replace: 0,
+            viewNext: 0,
+            undo: 0,
+            pickCard: 0,
+            doublePoints: 0
+        };
+        
+        const defaults = {
+            skipAI: 1,
+            replace: 3,
+            viewNext: 1,
+            undo: 1,
+            pickCard: 0,
+            doublePoints: 0
+        };
+        
+        this.skipAIAvailable = defaults.skipAI + permanentBonuses.skipAI + shopConsumables.skipAI;
+        this.skipAIConsumable = shopConsumables.skipAI;
+        
+        this.replaceCardAvailable = defaults.replace + permanentBonuses.replace + shopConsumables.replace;
+        this.replaceCardConsumable = shopConsumables.replace;
+        
+        this.viewNextAvailable = defaults.viewNext + permanentBonuses.viewNext + shopConsumables.viewNext;
+        this.viewNextConsumable = shopConsumables.viewNext;
+        
+        this.undoAvailable = defaults.undo + permanentBonuses.undo + shopConsumables.undo;
+        this.undoConsumable = shopConsumables.undo;
+        
+        this.pickCardAvailable = defaults.pickCard + permanentBonuses.pickCard + shopConsumables.pickCard;
+        this.pickCardConsumable = shopConsumables.pickCard;
+        
+        this.doublePointsAvailable = defaults.doublePoints + permanentBonuses.doublePoints + shopConsumables.doublePoints;
+        this.doublePointsConsumable = shopConsumables.doublePoints;
         
         // Only reset game-specific states
         this.skipAIUsed = false;
@@ -2912,7 +3104,6 @@ class NumberConnectionGame {
         
         document.getElementById('nextCardPreview').classList.remove('show');
         
-        // Remove double points indicator if exists
         const existingIndicator = document.querySelector('.double-points-indicator');
         if (existingIndicator) {
             existingIndicator.remove();
@@ -2923,9 +3114,8 @@ class NumberConnectionGame {
         document.getElementById('gameOver').classList.add('hidden');
         
         this.init();
-        
-        // FIXED: Update power-up display after init
         this.updatePowerupDisplay();
+        this.updateMultiplierDisplay();
         
         this.showMessage('New game started! Place your card!');
     }
@@ -3014,11 +3204,11 @@ function renderShopItems() {
     aiLevelContainer.innerHTML = '';
 
     const aiLevels = [
-        { value: '0.2', name: 'Novice AI', price: 2 },
-        { value: '0.3', name: 'Beginner AI', price: 3 },
-        { value: '0.7', name: 'Expert AI', price: 7.5 },
-        { value: '0.8', name: 'Pro AI', price: 12.5 },
-        { value: '0.9', name: 'Master AI', price: 20 }
+        { value: '0.2', name: 'Novice AI', price: 2, multiplier: 0.5 },
+        { value: '0.3', name: 'Beginner AI', price: 3, multiplier: 0.75 },
+        { value: '0.7', name: 'Expert AI', price: 7.5, multiplier: 1.3 },
+        { value: '0.8', name: 'Pro AI', price: 12.5, multiplier: 1.4 },
+        { value: '0.9', name: 'Master AI', price: 20, multiplier: 1.5 }
     ];
 
     aiLevels.forEach(level => {
@@ -3027,6 +3217,7 @@ function renderShopItems() {
         div.className = owned ? 'shop-item owned' : 'shop-item';
         div.innerHTML = `
             <div class="shop-item-name">🤖 ${level.name}</div>
+            <div class="shop-item-multiplier">${level.multiplier}x Shop Points</div>
             <div class="shop-item-price">${owned ? 'Owned' : level.price + ' pts'}</div>
             <button onclick="buyPermanent('aiLevel', '${level.value}', ${level.price})" 
                     ${owned || game.shop.points < level.price ? 'disabled' : ''}>
@@ -3036,22 +3227,23 @@ function renderShopItems() {
         aiLevelContainer.appendChild(div);
     });
     
-    // Board sizes
+   // Board sizes
     const boardContainer = document.getElementById('boardShopItems');
     boardContainer.innerHTML = '';
-    
+
     const boards = [
         { value: '3', name: '3x3 Quick Board', price: 3 },
         { value: '7', name: '7x7 Epic Board', price: 10 },
         { value: '8', name: '8x8 Massive Board', price: 20 }
     ];
-    
+
     boards.forEach(board => {
         const owned = game.shop.owned.boards.includes(board.value);
         const div = document.createElement('div');
         div.className = owned ? 'shop-item owned' : 'shop-item';
         div.innerHTML = `
             <div class="shop-item-name">🗺️ ${board.name}</div>
+            <div class="shop-item-multiplier">No multiplier bonus</div>
             <div class="shop-item-price">${owned ? 'Owned' : board.price + ' pts'}</div>
             <button onclick="buyPermanent('board', '${board.value}', ${board.price})" 
                     ${owned || game.shop.points < board.price ? 'disabled' : ''}>
@@ -3064,21 +3256,22 @@ function renderShopItems() {
     // Game modes
     const modeContainer = document.getElementById('gamemodeShopItems');
     modeContainer.innerHTML = '';
-    
+
     const modes = [
-        { value: 'blitz', name: 'Blitz Mode', price: 3 },
-        { value: 'suddendeath', name: 'Sudden Death', price: 10 },
-        { value: 'chainreaction', name: 'Chain Reaction', price: 20 },
-        { value: 'reverserules', name: 'Reverse Rules', price: 35 },
-        { value: 'mirrormatch', name: 'Mirror Match', price: 50 }
+        { value: 'blitz', name: 'Blitz', price: 3, multiplier: 1.0 },
+        { value: 'suddendeath', name: 'Sudden Death', price: 10, multiplier: 3.0 },
+        { value: 'chainreaction', name: 'Chain Reaction', price: 20, multiplier: 0.8 },
+        { value: 'reverserules', name: 'Reverse Rules', price: 35, multiplier: 5.0 },
+        { value: 'mirrormatch', name: 'Mirror Match', price: 50, multiplier: 1.5 }
     ];
-    
+
     modes.forEach(mode => {
         const owned = game.shop.owned.modes.includes(mode.value);
         const div = document.createElement('div');
         div.className = owned ? 'shop-item owned' : 'shop-item';
         div.innerHTML = `
             <div class="shop-item-name">🎮 ${mode.name}</div>
+            <div class="shop-item-multiplier">${mode.multiplier}x Shop Points</div>
             <div class="shop-item-price">${owned ? 'Owned' : mode.price + ' pts'}</div>
             <button onclick="buyPermanent('mode', '${mode.value}', ${mode.price})" 
                     ${owned || game.shop.points < mode.price ? 'disabled' : ''}>
@@ -3156,28 +3349,35 @@ function buyPowerup(type, price) {
     game.shop.points -= price;
     game.saveShop();
     
+    // FIXED: Add to both available and consumable
     switch(type) {
         case 'skipAI':
             game.skipAIAvailable++;
+            game.skipAIConsumable++;
             break;
         case 'replace':
             game.replaceCardAvailable++;
+            game.replaceCardConsumable++;
             break;
         case 'viewNext':
             game.viewNextAvailable++;
+            game.viewNextConsumable++;
             break;
         case 'undo':
             game.undoAvailable++;
+            game.undoConsumable++;
             break;
         case 'pickCard':
             game.pickCardAvailable++;
+            game.pickCardConsumable++;
             break;
         case 'doublePoints':
             game.doublePointsAvailable++;
+            game.doublePointsConsumable++;
             break;
     }
     
-    game.savePowerupState(); // NEW
+    game.saveShopConsumables(); // FIXED
     game.updatePowerupDisplay();
     game.updateStatsDisplay();
     document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);

@@ -1415,12 +1415,13 @@ button.warning {
   right: 10px;
   background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
   color: white;
-  font-size: 1em;
+  font-size: 0.85em;
   font-weight: bold;
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: 20px;
   box-shadow: 0 3px 10px rgba(255, 165, 0, 0.5);
   animation: doublePointsPulse 2s ease-in-out infinite;
+  cursor: help;
 }
 
 @keyframes doublePointsPulse {
@@ -1439,4 +1440,96 @@ button.warning {
   font-weight: 900 !important;
   letter-spacing: 3px !important;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+#shopPointsEarned {
+  margin: 15px 0;
+  font-weight: bold;
+  color: #FFD700;
+  font-size: 1em;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+.shop-item-multiplier {
+  color: #FF9800;
+  font-size: 0.95em;
+  margin-bottom: 5px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.shop-item.owned .shop-item-multiplier {
+  color: rgba(255, 255, 255, 0.95);
+}
+.shop-info-section {
+  background: rgba(102, 126, 234, 0.1);
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  border: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+.shop-info-section h3 {
+  color: #667eea;
+  margin-bottom: 10px;
+  font-size: 1.3em;
+}
+
+.shop-info-section p {
+  color: #555;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.multiplier-list {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 15px;
+}
+
+.multiplier-list li {
+  color: #555;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  line-height: 1.6;
+}
+
+.multiplier-list li:last-child {
+  border-bottom: none;
+}
+
+.multiplier-list strong {
+  color: #667eea;
+}
+
+.multiplier-example {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: white;
+  padding: 12px 15px;
+  border-radius: 10px;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 3px 10px rgba(255, 165, 0, 0.3);
+}
+.current-multipliers {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 12px 15px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  border: 2px solid #FFD700;
+  margin-top: 10px;
+}
+
+.multipliers-title {
+  font-size: 0.85em;
+  color: #666;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.multipliers-value {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #4CAF50;
+  transition: all 0.3s;
 }
