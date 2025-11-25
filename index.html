@@ -78,40 +78,48 @@
                     </div>
                     
                     <!-- NEW: Power-ups Menu moved outside and below -->
-                    <div class="powerups-activator" id="powerupsActivator">
-                        <button class="powerup-activator-btn">⚡ Power-ups</button>
-                        <div class="powerups-menu" id="powerupsMenu">
-                            <div class="powerups-menu-header">Available Power-ups</div>
-                            <button class="powerup-menu-item" id="skipAiBtn" onclick="game.useSkipAI()">
-                                <span class="powerup-icon">⏭️</span>
-                                <span class="powerup-name">Skip AI</span>
-                                <span class="powerup-badge" id="skipAiCount">0</span>
-                            </button>
-                            <button class="powerup-menu-item" id="replaceCardBtn" onclick="game.useReplaceCard()">
-                                <span class="powerup-icon">🔄</span>
-                                <span class="powerup-name">Replace Card</span>
-                                <span class="powerup-badge" id="replaceCardCount">0</span>
-                            </button>
-                            <button class="powerup-menu-item" id="viewNextBtn" onclick="game.useViewNext()">
-                                <span class="powerup-icon">👁️</span>
-                                <span class="powerup-name">View Next</span>
-                                <span class="powerup-badge" id="viewNextCount">0</span>
-                            </button>
-                            <button class="powerup-menu-item" id="undoBtn" onclick="game.useUndo()">
-                                <span class="powerup-icon">↩️</span>
-                                <span class="powerup-name">Undo Move</span>
-                                <span class="powerup-badge" id="undoCount">0</span>
-                            </button>
-                            <button class="powerup-menu-item" id="pickCardBtn" onclick="game.usePickCard()">
-                                <span class="powerup-icon">🎯</span>
-                                <span class="powerup-name">Pick Card</span>
-                                <span class="powerup-badge" id="pickCardCount">0</span>
-                            </button>
-                            <button class="powerup-menu-item" id="doublePointsBtn" onclick="game.useDoublePoints()">
-                                <span class="powerup-icon">💎</span>
-                                <span class="powerup-name">Double Points</span>
-                                <span class="powerup-badge" id="doublePointsCount">0</span>
-                            </button>
+                    <button class="powerups-btn" onclick="showPowerups()">⚡ Power-ups</button>
+                    <!-- Power-ups Modal -->
+                    <div class="modal" id="powerupsModal">
+                        <div class="modal-content">
+                            <h2>⚡ Power-ups</h2>
+                            
+                            <div class="powerups-grid">
+                                <button class="powerup-menu-item" id="skipAiBtn" onclick="game.useSkipAI(); closePowerups();">
+                                    <span class="powerup-icon">⏭️</span>
+                                    <span class="powerup-name">Skip AI</span>
+                                    <span class="powerup-badge" id="skipAiCount">0</span>
+                                </button>
+                                <button class="powerup-menu-item" id="replaceCardBtn" onclick="game.useReplaceCard(); closePowerups();">
+                                    <span class="powerup-icon">🔄</span>
+                                    <span class="powerup-name">Replace Card</span>
+                                    <span class="powerup-badge" id="replaceCardCount">0</span>
+                                </button>
+                                <button class="powerup-menu-item" id="viewNextBtn" onclick="game.useViewNext(); closePowerups();">
+                                    <span class="powerup-icon">👁️</span>
+                                    <span class="powerup-name">View Next</span>
+                                    <span class="powerup-badge" id="viewNextCount">0</span>
+                                </button>
+                                <button class="powerup-menu-item" id="undoBtn" onclick="game.useUndo(); closePowerups();">
+                                    <span class="powerup-icon">↩️</span>
+                                    <span class="powerup-name">Undo Move</span>
+                                    <span class="powerup-badge" id="undoCount">0</span>
+                                </button>
+                                <button class="powerup-menu-item" id="pickCardBtn" onclick="game.usePickCard(); closePowerups();">
+                                    <span class="powerup-icon">🎯</span>
+                                    <span class="powerup-name">Pick Card</span>
+                                    <span class="powerup-badge" id="pickCardCount">0</span>
+                                </button>
+                                <button class="powerup-menu-item" id="doublePointsBtn" onclick="game.useDoublePoints(); closePowerups();">
+                                    <span class="powerup-icon">💎</span>
+                                    <span class="powerup-name">Double Points</span>
+                                    <span class="powerup-badge" id="doublePointsCount">0</span>
+                                </button>
+                            </div>
+                            
+                            <div class="modal-buttons">
+                                <button onclick="closePowerups()">Close</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -158,7 +166,7 @@
                         <option value="chainreaction">Chain Reaction (0.8x)</option>
                         <option value="reverserules">Reverse Rules (5.0x)</option>
                         <option value="mirrormatch">Mirror Match (1.5x)</option>
-                        <option value="subtraction">Subtraction (1.35x)</option>
+                        <option value="subtraction">Subtraction (1.5x)</option>
                     </select>
                 </div>
 

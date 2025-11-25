@@ -14,6 +14,15 @@ body {
   color: #fff;
   touch-action: manipulation;
   overflow-x: hidden;
+  /* FIXED: Remove any extra bottom padding */
+  padding-bottom: 10px;
+}
+
+.game-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  /* FIXED: No extra padding at bottom */
+  padding-bottom: 0;
 }
 
 body.dark-theme {
@@ -73,10 +82,6 @@ body.icon-font .map-cell {
 body.icon-font .current-card {
   font-family: 'Orbitron', sans-serif !important;
   font-weight: 900 !important;
-}
-.game-container {
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 header {
@@ -160,6 +165,37 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 15px;
+  }
+
+  .player-hand-area {
+    background: rgba(255,255,255,0.95);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border: 3px solid #4CAF50;
+    text-align: center;
+    transition: opacity 0.3s;
+  }
+
+  .game-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .game-layout {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (min-width: 768px) {
+    .game-layout {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
   }
 
   .score-board {
@@ -518,20 +554,8 @@ h1 {
   display: block;
 }
 
-.powerups {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-/* Power-ups Menu Styles */
-.powerups-activator {
-  position: relative;
-  width: 100%;
-  margin-top: 15px;
-}
-
-.powerup-activator-btn {
+/* Power-ups Button */
+.powerups-btn {
   width: 100%;
   background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
   color: white;
@@ -543,79 +567,24 @@ h1 {
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  margin-top: 15px;
 }
 
-.powerup-activator-btn:hover {
+.powerups-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0,0,0,0.3);
 }
 
-.powerups-menu {
-  position: absolute;
-  left: 0;
-  right: 0;
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-  padding: 10px;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 100;
-  overflow-y: auto;
+.powerups-btn:active {
+  transform: translateY(0);
 }
 
-/* Desktop: Open downward with max-height constraint */
-@media (min-width: 768px) {
-  .powerups-menu {
-    top: calc(100% + 10px);
-    max-height: min(400px, calc(100vh - var(--menu-top, 200px) - 20px));
-    transform: translateY(-10px);
-  }
-  
-  .powerups-activator:hover .powerups-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-  }
-}
-
-/* Mobile: Open upward */
-@media (max-width: 767px) {
-  .powerups-menu {
-    bottom: calc(100% + 10px);
-    max-height: 300px;
-    transform: translateY(10px);
-  }
-  
-  .powerups-activator:hover .powerups-menu,
-  .powerups-activator:active .powerups-menu,
-  .powerup-activator-btn:active ~ .powerups-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-  }
-  
-  /* Keep menu open on touch devices when interacting */
-  .powerups-activator:focus-within .powerups-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-  }
-}
-
-.powerups-menu-header {
-  font-size: 1em;
-  font-weight: bold;
-  color: #667eea;
-  text-align: center;
-  padding: 10px;
-  border-bottom: 2px solid #e0e0e0;
-  margin-bottom: 10px;
+/* Power-ups Grid in Modal */
+.powerups-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 20px 0;
 }
 
 .powerup-menu-item {
@@ -633,12 +602,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
   touch-action: manipulation;
-}
-
-.powerup-menu-item:last-child {
-  margin-bottom: 0;
 }
 
 .powerup-menu-item:hover:not(:disabled) {
@@ -674,19 +638,6 @@ h1 {
   font-size: 0.9em;
   min-width: 30px;
   text-align: center;
-}
-
-/* Mobile specific adjustments */
-@media (max-width: 767px) {
-  .powerup-menu-item {
-    padding: 10px 12px;
-    font-size: 0.9em;
-  }
-  
-  .powerup-menu-item .powerup-icon {
-    font-size: 1.3em;
-    min-width: 25px;
-  }
 }
 
 .powerup-btn {

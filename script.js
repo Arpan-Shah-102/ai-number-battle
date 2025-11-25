@@ -126,46 +126,26 @@ function startTutorial() {
     modal.classList.add('show');
 }
 
-// Dynamic menu positioning to prevent overflow
-function updatePowerupMenuPosition() {
-    const activator = document.getElementById('powerupsActivator');
-    const menu = document.getElementById('powerupsMenu');
-    
-    if (!activator || !menu) return;
-    
-    // Only apply on desktop
-    if (window.innerWidth >= 768) {
-        const activatorRect = activator.getBoundingClientRect();
-        const menuHeight = 400; // max-height from CSS
-        const spaceBelow = window.innerHeight - activatorRect.bottom;
-        const spaceAbove = activatorRect.top;
-        
-        // Calculate available space and set CSS variable
-        const availableSpace = Math.max(spaceBelow - 20, 200);
-        document.documentElement.style.setProperty('--menu-top', `${activatorRect.bottom}px`);
-        
-        // If not enough space below, consider opening upward on desktop too
-        if (spaceBelow < 250 && spaceAbove > spaceBelow) {
-            menu.style.bottom = 'calc(100% + 10px)';
-            menu.style.top = 'auto';
-            menu.style.maxHeight = `min(400px, ${Math.min(spaceAbove - 20, 400)}px)`;
-        } else {
-            menu.style.top = 'calc(100% + 10px)';
-            menu.style.bottom = 'auto';
-            menu.style.maxHeight = `min(400px, ${availableSpace}px)`;
-        }
-    }
+function showPowerups() {
+    SoundEffects.playButton();
+    game.updatePowerupDisplay();
+    document.getElementById('powerupsModal').classList.add('show');
 }
 
-// Update position on page load and window resize
-window.addEventListener('load', updatePowerupMenuPosition);
-window.addEventListener('resize', updatePowerupMenuPosition);
+function closePowerups() {
+    SoundEffects.playButton();
+    document.getElementById('powerupsModal').classList.remove('show');
+}
 
-// Update when the activator is hovered (for dynamic content changes)
+// Close powerups modal when clicking background
 document.addEventListener('DOMContentLoaded', () => {
-    const activator = document.getElementById('powerupsActivator');
-    if (activator) {
-        activator.addEventListener('mouseenter', updatePowerupMenuPosition);
+    const powerupsModal = document.getElementById('powerupsModal');
+    if (powerupsModal) {
+        powerupsModal.addEventListener('click', (e) => {
+            if (e.target.id === 'powerupsModal') {
+                closePowerups();
+            }
+        });
     }
 });
 // Better mobile touch handling for power-ups menu
@@ -786,17 +766,17 @@ class NumberConnectionGame {
         this.doublePointsActive = false;
 
         // FIXED: Game mode multipliers
-            this.gameModeMultipliers = {
-                classic: 1.0,
-                nobonus: 1.1,
-                survival: 1.25,
-                blitz: 2.5,
-                suddendeath: 3.0,
-                chainreaction: 0.8,
-                reverserules: 5.0,
-                mirrormatch: 1.5,
-                subtraction: 1.35 // NEW
-            };
+        this.gameModeMultipliers = {
+            classic: 1.0,
+            nobonus: 1.1,
+            survival: 1.25,
+            blitz: 2.5,
+            suddendeath: 3.0,
+            chainreaction: 0.8,
+            reverserules: 5.0,
+            mirrormatch: 1.5,
+            subtraction: 1.5 // FIXED: Changed from 1.35 to 1.5
+        };
 
         // NEW: AI difficulty multipliers
         this.aiDifficultyMultipliers = {
@@ -1140,7 +1120,7 @@ class NumberConnectionGame {
                 { value: 'chainreaction', label: 'Chain Reaction', multiplier: 0.8 },
                 { value: 'reverserules', label: 'Reverse Rules', multiplier: 5.0 },
                 { value: 'mirrormatch', label: 'Mirror Match', multiplier: 1.5 },
-                { value: 'subtraction', label: 'Subtraction', multiplier: 1.35 } // NEW
+                { value: 'subtraction', label: 'Subtraction', multiplier: 1.5 } // FIXED
             ];
             
             modes.forEach(mode => {
@@ -3030,7 +3010,12 @@ class NumberConnectionGame {
                     winnerText.style.color = '#4CAF50';
                     SoundEffects.playWin();
                     
+                    // FIXED: Recalculate multipliers here where they're needed
+                    const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
+                    const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
+                    const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
                     const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
+                    const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus;
                     
                     // Get difficulty name
                     const difficultyNames = {
@@ -3047,7 +3032,7 @@ class NumberConnectionGame {
                     
                     const modeName = this.gameMode.charAt(0).toUpperCase() + this.gameMode.slice(1).replace(/([A-Z])/g, ' $1');
                     
-                    // FIXED: Show addition with base multiplier
+                    // Show addition with base multiplier
                     let multiplierText = `Mode: ${gameModeMultiplier.toFixed(2)}x, AI: ${aiDifficultyMultiplier.toFixed(2)}x`;
                     if (baseMultiplierBonus > 0) {
                         multiplierText += `, Base: +${baseMultiplierBonus.toFixed(2)}x`;
@@ -3310,7 +3295,7 @@ function renderShopItems() {
         { value: 'suddendeath', name: 'Sudden Death', price: 10, multiplier: 3.0 },
         { value: 'chainreaction', name: 'Chain Reaction', price: 20, multiplier: 0.8 },
         { value: 'reverserules', name: 'Reverse Rules', price: 30, multiplier: 5.0 }, // FIXED: Changed from 35 to 30
-        { value: 'subtraction', name: 'Subtraction', price: 40, multiplier: 1.35 }, // NEW
+        { value: 'subtraction', name: 'Subtraction', price: 40, multiplier: 1.5 }, // FIXED
         { value: 'mirrormatch', name: 'Mirror Match', price: 50, multiplier: 1.5 }
     ];
 
