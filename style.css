@@ -400,6 +400,14 @@ h1 {
   box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);
 }
 
+.map-cell.fog-hidden {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  border-color: #1a252f;
+  border-style: solid;
+  color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(44, 62, 80, 0.5);
+}
+
 .map-cell.nearby-highlight {
   border-color: #FFD700;
   border-style: solid;
@@ -499,6 +507,35 @@ h1 {
 .player-hand-area.disabled {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* Testing Time timer */
+.testing-time-timer {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1.5em;
+  font-weight: bold;
+  padding: 8px 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  text-align: center;
+  transition: all 0.3s;
+  animation: pulse-timer 1s infinite;
+}
+
+.testing-time-timer.danger {
+  background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+  animation: pulse-danger 0.3s infinite;
+}
+
+@keyframes pulse-timer {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@keyframes pulse-danger {
+  0%, 100% { transform: scale(1); background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%); }
+  50% { transform: scale(1.05); background: linear-gradient(135deg, #ff0000 0%, #aa0000 100%); }
 }
 
 .player-hand-area h3 {
@@ -1209,6 +1246,32 @@ button.warning {
 /* Shop Styles */
 .shop-section {
   margin-bottom: 30px;
+}
+
+.shop-section h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shop-goto-settings-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75em;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.shop-goto-settings-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  filter: brightness(1.1);
 }
 
 .shop-category {

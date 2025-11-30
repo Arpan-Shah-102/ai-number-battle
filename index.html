@@ -167,12 +167,48 @@
                         <option value="reverserules">Reverse Rules (5.0x)</option>
                         <option value="mirrormatch">Mirror Match (1.5x)</option>
                         <option value="subtraction">Subtraction (1.5x)</option>
+                        <option value="testingtime">Testing Time (1.5x)</option>
+                        <option value="ludicrouslylucky">Ludicrously Lucky (3.0x)</option>
+                        <option value="fogofwar">Fog of War (1.75x)</option>
+                        <option value="territorial">Territorial (2.0x)</option>
                     </select>
+                </div>
+
+                <div id="restrictionsSettingsSection" style="display: none;">
+                    <h3>🔒 Restrictions</h3>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">Enable purchased restrictions for bonus pts multipliers! Multipliers stack.</p>
+                    
+                    <div class="setting-group">
+                        <div class="restriction-option" title="Disable end-game cell bonus points. A true test of scoring skill!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                            <input type="checkbox" id="restrictionNoBonus" onchange="game.toggleRestriction('noBonus', this.checked)">
+                            <span>No Bonus Points (x1.2 pts) - No end-game cell bonus</span>
+                        </div>
+                        <div class="restriction-option" title="Let the AI make the first move. Start at a disadvantage!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                            <input type="checkbox" id="restrictionAIFirst" onchange="game.toggleRestriction('aiFirst', this.checked)">
+                            <span>AI First (x1.05 pts) - AI makes the first move</span>
+                        </div>
+                        <div class="restriction-option" title="Full grid connections instead of random. More predictable but easier!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                            <input type="checkbox" id="restrictionMaintainedPaths" onchange="game.toggleRestriction('maintainedPaths', this.checked)">
+                            <span>Maintained Paths (x0.8 pts) - Full grid connections</span>
+                        </div>
+                        <div class="restriction-option" title="Map is a single winding path - strategic blocking becomes crucial!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                            <input type="checkbox" id="restrictionSinglePath" onchange="game.toggleRestriction('singlePath', this.checked)">
+                            <span>Single Path (x1.4 pts) - One winding path only</span>
+                        </div>
+                        <div class="restriction-option" title="Only sequences score points! Matches and tens give nothing." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                            <input type="checkbox" id="restrictionScummySequences" onchange="game.toggleRestriction('scummySequences', this.checked)">
+                            <span>Scummy Sequences (x1.6 pts) - Only sequences score</span>
+                        </div>
+                        <div class="restriction-option" title="Zero pairs (0+0) give 10 points instead of 1! Chase those zeros." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                            <input type="checkbox" id="restrictionGloriousZeros" onchange="game.toggleRestriction('gloriousZeros', this.checked)">
+                            <span>Glorious Zeros (x0.9 pts) - 0+0 = 10 points!</span>
+                        </div>
+                    </div>
                 </div>
 
                 <h3>🎨 Themes</h3>
                 
-                <div class="theme-section">
+                <div class="theme-section" id="themeSection">
                     <div class="theme-section-title">Available Themes</div>
                     <div class="theme-selector">
                         <div class="theme-option default active" onclick="changeTheme('default')">
@@ -195,7 +231,7 @@
 
                 <h3>🎭 Icon Packs</h3>
                 
-                <div class="icon-section">
+                <div class="icon-section" id="iconSection">
                     <div class="icon-section-title">Available Icon Packs</div>
                     <div class="icon-selector">
                         <div class="icon-option active" data-icon="default" onclick="changeIconPack('default')">
@@ -274,16 +310,17 @@
 
                 <!-- NEW: Multiplier Info Section -->
                 <div class="shop-info-section">
-                    <h3>💡 Shop Point Multipliers</h3>
+                    <h3>💡 Shop Points Multipliers</h3>
                     <p>Win games to earn shop points! Your earnings are multiplied by:</p>
                     <ul class="multiplier-list">
                         <li><strong>Game Mode:</strong> Each mode has a different multiplier (0.8x to 5.0x)</li>
-                        <li><strong>AI Difficulty:</strong> Harder AI = more points (0.5x to 1.5x)</li>
+                        <li><strong>AI Difficulty:</strong> Harder AI = more pts (0.5x to 1.5x)</li>
+                        <li><strong>Restrictions:</strong> Enable restrictions for bonus multipliers!</li>
                         <li><strong>💎 Double Points Power-up:</strong> Adds +2.0x to total</li>
                         <li><strong>Total:</strong> All multipliers are added together!</li>
                     </ul>
                     <div class="multiplier-example">
-                        Example: Win on Reverse Rules (5x) + Master AI (1.5x) + Double Points (+2x) = 6.5x total!
+                        Example: Win on Reverse Rules (5x) + Master AI (1.5x) + No Bonus (1.2x) + Double Points (+2x) = 7.7x total!
                     </div>
                 </div>
 
@@ -298,7 +335,7 @@
                 </div>
 
                 <div class="shop-section">
-                    <h3>🗺️ Board Sizes (Permanent)</h3>
+                    <h3>🗺️ Board Sizes (Permanent) <button class="shop-goto-settings-btn" onclick="goToSettingsSection('boardSizeSelect')">⚙️ Go to Settings</button></h3>
                     <div class="shop-category">
                         <div class="shop-items" id="boardShopItems">
                             <!-- Board sizes will be added here -->
@@ -307,7 +344,7 @@
                 </div>
 
                 <div class="shop-section">
-                    <h3>🎮 Game Modes (Permanent)</h3>
+                    <h3>🎮 Game Modes (Permanent) <button class="shop-goto-settings-btn" onclick="goToSettingsSection('gamemodeSelect')">⚙️ Go to Settings</button></h3>
                     <div class="shop-category">
                         <div class="shop-items" id="gamemodeShopItems">
                             <!-- Game modes will be added here -->
@@ -316,7 +353,18 @@
                 </div>
 
                 <div class="shop-section">
-                    <h3>🤖 AI Difficulty Levels (Permanent)</h3>
+                    <h3>🔒 Restrictions (Permanent) <button class="shop-goto-settings-btn" onclick="goToSettingsSection('restrictionsSettingsSection')">⚙️ Go to Settings</button></h3>
+                    <div class="shop-category">
+                        <h4>Challenge Yourself for Bonus Multipliers!</h4>
+                        <p style="color: #666; margin-bottom: 10px;">Purchase restrictions to enable them in Settings. Multipliers stack with other bonuses!</p>
+                        <div class="shop-items" id="restrictionShopItems">
+                            <!-- Restrictions will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shop-section">
+                    <h3>🤖 AI Difficulty Levels (Permanent) <button class="shop-goto-settings-btn" onclick="goToSettingsSection('difficultySelect')">⚙️ Go to Settings</button></h3>
                     <div class="shop-category">
                         <div class="shop-items" id="aiLevelShopItems">
                             <!-- AI levels will be added here -->
@@ -325,7 +373,7 @@
                 </div>
 
                 <div class="shop-section">
-                    <h3>🎨 Themes (Permanent)</h3>
+                    <h3>🎨 Themes (Permanent) <button class="shop-goto-settings-btn" onclick="goToSettingsSection('themeSection')">⚙️ Go to Settings</button></h3>
                     <div class="shop-category">
                         <div class="shop-items" id="themeShopItems">
                             <!-- Themes will be added here -->
@@ -334,7 +382,7 @@
                 </div>
 
                 <div class="shop-section">
-                    <h3>🎭 Icon Packs (Permanent)</h3>
+                    <h3>🎭 Icon Packs (Permanent) <button class="shop-goto-settings-btn" onclick="goToSettingsSection('iconSection')">⚙️ Go to Settings</button></h3>
                     <div class="shop-category">
                         <div class="shop-items" id="iconShopItems">
                             <!-- Icon packs will be added here -->
@@ -343,10 +391,10 @@
                 </div>
 
                 <div class="shop-section">
-                    <h3>⭐ Base Shop Point Multiplier (Permanent)</h3>
+                    <h3>⭐ Base Pts Multiplier (Permanent)</h3>
                     <div class="shop-category">
-                        <h4>Permanent Boost to All Shop Point Earnings!</h4>
-                        <p style="color: #666; margin-bottom: 10px;">Each level adds +0.1x to your shop points multiplier permanently. Stacks with all other multipliers!</p>
+                        <h4>Permanent Boost to All Pts Earnings!</h4>
+                        <p style="color: #666; margin-bottom: 10px;">Each level adds +0.1x to your pts multiplier permanently. Stacks with all other multipliers!</p>
                         <div class="shop-items" id="baseMultiplierShopItems">
                             <!-- Base multiplier will be added here -->
                         </div>

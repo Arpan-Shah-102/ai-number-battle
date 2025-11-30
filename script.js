@@ -711,6 +711,16 @@ class NumberConnectionGame {
 
         this.blitzInterval = null;
         this.blitzActive = false;
+        
+        // Testing Time mode properties
+        this.testingTimeRemaining = 10.0;
+        this.testingTimeInterval = null;
+        
+        // Fog of War mode properties
+        this.visibleCells = new Set();
+        
+        // Ludicrously Lucky mode properties
+        this.turnCountSinceStart = 0;
 
         // FIXED: Load stats and shop BEFORE initializing power-ups
         this.stats = this.loadStats();
@@ -775,7 +785,11 @@ class NumberConnectionGame {
             chainreaction: 0.8,
             reverserules: 5.0,
             mirrormatch: 1.5,
-            subtraction: 1.5 // FIXED: Changed from 1.35 to 1.5
+            subtraction: 1.5,
+            testingtime: 1.5,
+            ludicrouslylucky: 3.0,
+            fogofwar: 1.75,
+            territorial: 2.0
         };
 
         // NEW: AI difficulty multipliers
@@ -788,6 +802,17 @@ class NumberConnectionGame {
             0.7: 1.3,   // Expert
             0.8: 1.4,   // Pro
             0.9: 1.5    // Master
+        };
+
+        // NEW: Restrictions system
+        this.restrictions = this.loadRestrictions();
+        this.restrictionMultipliers = {
+            noBonus: 1.2,           // No bonus points at end = 1.2x pts
+            aiFirst: 1.05,          // AI goes first = 1.05x pts
+            maintainedPaths: 0.8,   // Full grid connections = 0.8x pts
+            singlePath: 1.4,        // Single winding path = 1.4x pts
+            scummySequences: 1.6,   // Only sequences score = 1.6x pts
+            gloriousZeros: 0.9      // Zero pairs give 10 pts = 0.9x pts
         };
 
         this.applyTheme(this.currentTheme);
@@ -848,6 +873,100 @@ class NumberConnectionGame {
         localStorage.setItem('sfxEnabled', SoundEffects.enabled.toString());
     }
 
+    // NEW: Restrictions system
+    loadRestrictions() {
+        const saved = localStorage.getItem('restrictions');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Ensure all restriction keys exist
+                return {
+                    noBonus: parsed.noBonus || false,
+                    aiFirst: parsed.aiFirst || false,
+                    maintainedPaths: parsed.maintainedPaths || false,
+                    singlePath: parsed.singlePath || false,
+                    scummySequences: parsed.scummySequences || false,
+                    gloriousZeros: parsed.gloriousZeros || false
+                };
+            } catch (e) {
+                console.warn('Corrupted restrictions, resetting...');
+                localStorage.removeItem('restrictions');
+            }
+        }
+        return {
+            noBonus: false,
+            aiFirst: false,
+            maintainedPaths: false,
+            singlePath: false,
+            scummySequences: false,
+            gloriousZeros: false
+        };
+    }
+
+    saveRestrictions() {
+        localStorage.setItem('restrictions', JSON.stringify(this.restrictions));
+    }
+
+    toggleRestriction(restriction, enabled) {
+        SoundEffects.playButton();
+        
+        // Check if player owns this restriction (purchased from shop)
+        if (enabled && !this.shop.owned.restrictions.includes(restriction)) {
+            this.showMessage(`You need to buy this restriction from the shop first!`);
+            this.updateRestrictionsUI();
+            return;
+        }
+        
+        this.restrictions[restriction] = enabled;
+        this.saveRestrictions();
+        this.updateMultiplierDisplay();
+        this.updateRestrictionsUI();
+        
+        // Show message about the restriction
+        if (enabled) {
+            const names = {
+                noBonus: 'No Bonus Points',
+                aiFirst: 'AI First',
+                maintainedPaths: 'Maintained Paths',
+                singlePath: 'Single Path',
+                scummySequences: 'Scummy Sequences',
+                gloriousZeros: 'Glorious Zeros'
+            };
+            const multipliers = {
+                noBonus: '1.2x',
+                aiFirst: '1.05x',
+                maintainedPaths: '0.8x',
+                singlePath: '1.4x',
+                scummySequences: '1.6x',
+                gloriousZeros: '0.9x'
+            };
+            this.showMessage(`${names[restriction]} restriction enabled! (${multipliers[restriction]} pts)`);
+        }
+    }
+
+    updateRestrictionsUI() {
+        const noBonusCheck = document.getElementById('restrictionNoBonus');
+        const aiFirstCheck = document.getElementById('restrictionAIFirst');
+        const maintainedPathsCheck = document.getElementById('restrictionMaintainedPaths');
+        const singlePathCheck = document.getElementById('restrictionSinglePath');
+        const scummySequencesCheck = document.getElementById('restrictionScummySequences');
+        const gloriousZerosCheck = document.getElementById('restrictionGloriousZeros');
+        const restrictionsSection = document.getElementById('restrictionsSettingsSection');
+        
+        if (noBonusCheck) noBonusCheck.checked = this.restrictions.noBonus;
+        if (aiFirstCheck) aiFirstCheck.checked = this.restrictions.aiFirst;
+        if (maintainedPathsCheck) maintainedPathsCheck.checked = this.restrictions.maintainedPaths;
+        if (singlePathCheck) singlePathCheck.checked = this.restrictions.singlePath;
+        if (scummySequencesCheck) scummySequencesCheck.checked = this.restrictions.scummySequences;
+        if (gloriousZerosCheck) gloriousZerosCheck.checked = this.restrictions.gloriousZeros;
+        
+        // Show/hide restrictions section based on whether any are owned
+        if (restrictionsSection) {
+            const hasAnyRestriction = this.shop.owned.restrictions && this.shop.owned.restrictions.length > 0;
+            restrictionsSection.style.display = hasAnyRestriction ? 'block' : 'none';
+        }
+    }
+
     loadStats() {
         const saved = localStorage.getItem('gameStats');
         if (saved) {
@@ -901,6 +1020,10 @@ class NumberConnectionGame {
                 if (!shopData.owned.aiLevels) {
                     shopData.owned.aiLevels = ['0.4', '0.5', '0.6'];
                 }
+                // Ensure restrictions array exists
+                if (!shopData.owned.restrictions) {
+                    shopData.owned.restrictions = [];
+                }
                 // FIXED: Ensure permanentPowerups exists
                 if (!shopData.owned.permanentPowerups) {
                     shopData.owned.permanentPowerups = {
@@ -927,6 +1050,7 @@ class NumberConnectionGame {
                 themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
                 icons: ['default'],
                 aiLevels: ['0.4', '0.5', '0.6'],
+                restrictions: [],
                 permanentPowerups: {
                     skipAI: 0,
                     replace: 0,
@@ -935,7 +1059,7 @@ class NumberConnectionGame {
                     pickCard: 0,
                     doublePoints: 0
                 },
-                baseMultiplier: 0 // NEW: Base shop point multiplier levels
+                baseMultiplier: 0 // NEW: Base pts multiplier levels
             }
         };
         
@@ -1225,6 +1349,9 @@ class NumberConnectionGame {
                 }
             });
         }
+        
+        // Update restrictions checkboxes
+        this.updateRestrictionsUI();
     }
 
     updateDifficultyDropdown() {
@@ -1548,7 +1675,7 @@ class NumberConnectionGame {
             this.useConsumablePowerup('doublePoints');
             this.doublePointsActive = true;
             
-            this.showMessage("💎 DOUBLE SHOP POINTS activated for this game!");
+            this.showMessage("💎 DOUBLE PTS activated for this game!");
             SoundEffects.playPowerup();
             this.updatePowerupDisplay();
             this.updateMultiplierDisplay();
@@ -1558,7 +1685,7 @@ class NumberConnectionGame {
             const indicator = document.createElement('div');
             indicator.className = 'double-points-indicator';
             indicator.textContent = '💎 Shop 2X';
-            indicator.title = 'Double shop points for this game!';
+            indicator.title = 'Double pts for this game!';
             playerScoreCard.appendChild(indicator);
         }
     }
@@ -1660,11 +1787,53 @@ class NumberConnectionGame {
             this.showMessage('MIRROR MATCH: You and AI have the same cards! 🪞');
         } else if (this.gameMode === 'subtraction') {
             this.showMessage('SUBTRACTION: Claiming tiles subtracts opponent points! ➖');
+        } else if (this.gameMode === 'testingtime') {
+            this.showMessage('TESTING TIME: 10 second turns, decreasing by 0.1s each turn! ⏱️');
+        } else if (this.gameMode === 'ludicrouslylucky') {
+            this.showMessage('LUDICROUSLY LUCKY: Game could end any turn after turn 3! 🎲');
+        } else if (this.gameMode === 'fogofwar') {
+            this.showMessage('FOG OF WAR: Only see cards you placed and adjacent cells! 🌫️');
+        } else if (this.gameMode === 'territorial') {
+            this.showMessage('TERRITORIAL: Claim tiles for points - most tiles wins! 🏰');
+        }
+        
+        // NEW: Show restriction messages
+        let restrictionMsgs = [];
+        if (this.restrictions.noBonus) restrictionMsgs.push('No Bonus');
+        if (this.restrictions.aiFirst) restrictionMsgs.push('AI First');
+        if (this.restrictions.maintainedPaths) restrictionMsgs.push('Full Grid');
+        if (this.restrictions.singlePath) restrictionMsgs.push('Single Path');
+        if (this.restrictions.scummySequences) restrictionMsgs.push('Sequences Only');
+        if (this.restrictions.gloriousZeros) restrictionMsgs.push('0+0=10pts');
+        if (restrictionMsgs.length > 0) {
+            setTimeout(() => {
+                this.showMessage(`🔒 Restrictions: ${restrictionMsgs.join(', ')}`);
+            }, 1500);
+        }
+        
+        // Initialize Testing Time timer if needed
+        if (this.gameMode === 'testingtime') {
+            this.testingTimeRemaining = 10.0;
+            this.testingTimeInterval = null;
+        }
+        
+        // Initialize Fog of War visibility
+        if (this.gameMode === 'fogofwar') {
+            this.visibleCells = new Set();
         }
         
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 this.drawConnectionLines();
+                
+                // NEW: If AI First restriction is enabled, AI goes first
+                if (this.restrictions.aiFirst && !this.gameEnded) {
+                    this.isPlayerTurn = false;
+                    this.disablePlayerInput();
+                    setTimeout(() => {
+                        this.aiTurn();
+                    }, 500);
+                }
             });
         });
     }
@@ -1862,7 +2031,39 @@ class NumberConnectionGame {
         for (let i = 0; i < this.totalCells; i++) {
             adjacencyList.set(i, []);
         }
+        
+        // NEW: Single Path restriction - create a single winding path through all cells
+        if (this.restrictions.singlePath) {
+            this.generateSinglePath(adjacencyList);
+            return;
+        }
 
+        // NEW: If maintainedPaths restriction is enabled, create full grid connections
+        if (this.restrictions.maintainedPaths) {
+            for (let i = 0; i < this.totalCells; i++) {
+                const row = Math.floor(i / this.gridSize);
+                const col = i % this.gridSize;
+
+                // Connect to right neighbor
+                if (col < this.gridSize - 1) {
+                    const right = i + 1;
+                    this.connections.push({ from: i, to: right });
+                    adjacencyList.get(i).push(right);
+                    adjacencyList.get(right).push(i);
+                }
+
+                // Connect to bottom neighbor
+                if (row < this.gridSize - 1) {
+                    const bottom = i + this.gridSize;
+                    this.connections.push({ from: i, to: bottom });
+                    adjacencyList.get(i).push(bottom);
+                    adjacencyList.get(bottom).push(i);
+                }
+            }
+            return; // Skip random connection generation
+        }
+
+        // Normal random connection generation
         for (let i = 0; i < this.totalCells; i++) {
             const row = Math.floor(i / this.gridSize);
             const col = i % this.gridSize;
@@ -1901,6 +2102,79 @@ class NumberConnectionGame {
                 }
             }
         }
+    }
+    
+    // Generate a single winding path through all cells (Hamiltonian path)
+    generateSinglePath(adjacencyList) {
+        const visited = new Set();
+        const path = [];
+        
+        // Start from a random corner for variety
+        const corners = [0, this.gridSize - 1, this.totalCells - this.gridSize, this.totalCells - 1];
+        let current = corners[Math.floor(Math.random() * corners.length)];
+        
+        visited.add(current);
+        path.push(current);
+        
+        // Try to visit all cells using backtracking
+        const stack = [{ cell: current, neighbors: this.getShuffledNeighbors(current) }];
+        
+        while (path.length < this.totalCells && stack.length > 0) {
+            const top = stack[stack.length - 1];
+            
+            // Find unvisited neighbor
+            let foundNext = false;
+            while (top.neighbors.length > 0) {
+                const next = top.neighbors.pop();
+                if (!visited.has(next)) {
+                    visited.add(next);
+                    path.push(next);
+                    stack.push({ cell: next, neighbors: this.getShuffledNeighbors(next) });
+                    foundNext = true;
+                    break;
+                }
+            }
+            
+            // Backtrack if no unvisited neighbors
+            if (!foundNext) {
+                stack.pop();
+            }
+        }
+        
+        // If we couldn't visit all cells, use a simpler snake pattern
+        if (path.length < this.totalCells) {
+            path.length = 0;
+            for (let row = 0; row < this.gridSize; row++) {
+                if (row % 2 === 0) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        path.push(row * this.gridSize + col);
+                    }
+                } else {
+                    for (let col = this.gridSize - 1; col >= 0; col--) {
+                        path.push(row * this.gridSize + col);
+                    }
+                }
+            }
+        }
+        
+        // Create connections along the path
+        for (let i = 0; i < path.length - 1; i++) {
+            const from = path[i];
+            const to = path[i + 1];
+            this.connections.push({ from, to });
+            adjacencyList.get(from).push(to);
+            adjacencyList.get(to).push(from);
+        }
+    }
+    
+    getShuffledNeighbors(index) {
+        const neighbors = this.getPotentialNeighbors(index);
+        // Fisher-Yates shuffle
+        for (let i = neighbors.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [neighbors[i], neighbors[j]] = [neighbors[j], neighbors[i]];
+        }
+        return neighbors;
     }
 
     getPotentialNeighbors(index) {
@@ -2011,11 +2285,84 @@ class NumberConnectionGame {
     enablePlayerInput() {
         document.getElementById('playerHandArea').classList.remove('disabled');
         this.updatePowerupDisplay();
+        
+        // Testing Time mode: Start the countdown timer
+        if (this.gameMode === 'testingtime' && !this.gameEnded) {
+            this.startTestingTimeTimer();
+        }
     }
 
     disablePlayerInput() {
         document.getElementById('playerHandArea').classList.add('disabled');
         this.updatePowerupDisplay();
+        
+        // Testing Time mode: Stop and reset timer
+        if (this.gameMode === 'testingtime') {
+            this.stopTestingTimeTimer();
+        }
+    }
+    
+    startTestingTimeTimer() {
+        // Clear any existing timer
+        if (this.testingTimeInterval) {
+            clearInterval(this.testingTimeInterval);
+        }
+        
+        const timerDisplay = document.getElementById('testingTimeTimer');
+        if (!timerDisplay) {
+            // Create timer display if it doesn't exist
+            const container = document.getElementById('playerHandArea');
+            if (container) {
+                const timer = document.createElement('div');
+                timer.id = 'testingTimeTimer';
+                timer.className = 'testing-time-timer';
+                timer.textContent = this.testingTimeRemaining.toFixed(1) + 's';
+                container.prepend(timer);
+            }
+        } else {
+            timerDisplay.textContent = this.testingTimeRemaining.toFixed(1) + 's';
+            timerDisplay.classList.remove('danger');
+        }
+        
+        let timeLeft = this.testingTimeRemaining;
+        
+        this.testingTimeInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            const display = document.getElementById('testingTimeTimer');
+            
+            if (display) {
+                display.textContent = Math.max(0, timeLeft).toFixed(1) + 's';
+                if (timeLeft <= 3) {
+                    display.classList.add('danger');
+                }
+            }
+            
+            if (timeLeft <= 0) {
+                this.stopTestingTimeTimer();
+                // Time ran out - place card randomly or skip turn
+                if (this.currentPlayerCard !== null && !this.gameEnded) {
+                    this.showMessage('⏰ Time ran out! Random placement! ⏰');
+                    const emptyCells = [];
+                    this.mapState.forEach((cell, index) => {
+                        if (cell === null) emptyCells.push(index);
+                    });
+                    if (emptyCells.length > 0) {
+                        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                        this.playCard(randomCell);
+                    }
+                }
+            }
+        }, 100);
+    }
+    
+    stopTestingTimeTimer() {
+        if (this.testingTimeInterval) {
+            clearInterval(this.testingTimeInterval);
+            this.testingTimeInterval = null;
+        }
+        
+        // Decrease time for next turn (minimum 2 seconds)
+        this.testingTimeRemaining = Math.max(2.0, this.testingTimeRemaining - 0.1);
     }
 
     updatePowerupDisplay() {
@@ -2048,10 +2395,16 @@ class NumberConnectionGame {
         const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
         const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
         const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
-        const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1; // NEW
+        const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
         
-        // FIXED: Add multipliers instead of multiplying
-        const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus;
+        // NEW: Calculate restriction multipliers
+        let restrictionBonus = 0;
+        if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
+        if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
+        if (this.restrictions.maintainedPaths) restrictionBonus += (this.restrictionMultipliers.maintainedPaths - 1.0);
+        
+        // Add all multipliers together
+        const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
         
         const multiplierElement = document.getElementById('multipliersValue');
         if (multiplierElement) {
@@ -2288,6 +2641,9 @@ class NumberConnectionGame {
 
         this.mapState[cellIndex] = { number: playedCard, owner: 'neutral' };
         
+        // Fog of War: Player reveals their placed cell and adjacent
+        this.revealCell(cellIndex);
+        
         setTimeout(() => {
             targetCell.classList.add('just-placed');
             this.updateMap();
@@ -2356,6 +2712,17 @@ class NumberConnectionGame {
             if (this.shouldGameEnd()) {
                 this.endGame();
                 return;
+            }
+            
+            // Ludicrously Lucky: Check for random game end (after turn 3)
+            if (this.gameMode === 'ludicrouslylucky' && this.turnCount > 3) {
+                // 10% chance to end each turn, increasing by 2% per turn after turn 3
+                const endChance = 0.10 + (this.turnCount - 3) * 0.02;
+                if (Math.random() < endChance) {
+                    this.showMessage('🎲 LUDICROUSLY LUCKY! The game suddenly ends! 🎲');
+                    setTimeout(() => this.endGame(), 1500);
+                    return;
+                }
             }
 
             if (this.gameMode === 'blitz' && !this.blitzActive) {
@@ -2508,6 +2875,16 @@ class NumberConnectionGame {
                             return;
                         }
                         
+                        // Ludicrously Lucky: Check for random game end after AI turn
+                        if (this.gameMode === 'ludicrouslylucky' && this.turnCount > 3) {
+                            const endChance = 0.10 + (this.turnCount - 3) * 0.02;
+                            if (Math.random() < endChance) {
+                                this.showMessage('🎲 LUDICROUSLY LUCKY! The game suddenly ends! 🎲');
+                                setTimeout(() => this.endGame(), 1500);
+                                return;
+                            }
+                        }
+                        
                         if (this.playerDeck.length > 0 || this.currentPlayerCard !== null) {
                             this.isPlayerTurn = true;
                             this.enablePlayerInput();
@@ -2583,18 +2960,21 @@ class NumberConnectionGame {
     }
 
     calculatePoints(cellIndex, number, owner) {
-        // FIXED: Remove double points from here - it only affects shop points
+        // FIXED: Remove double points from here - it only affects cash
         return this.calculatePointsForState(cellIndex, number, owner, this.mapState, true);
     }
 
     // FIXED: Scoring calculation with proper moon phase logic
     calculatePointsForState(cellIndex, number, owner, state, updateOwnership) {
         let totalPoints = 0;
+        let matchPoints = 0; // Track match/tens points separately for Scummy Sequences
         const highlightCells = new Set([cellIndex]);
         const cellsToOwn = new Set([cellIndex]);
         const cellPointsMap = new Map();
 
         const connectedCells = this.getConnectedCells(cellIndex);
+        const isScummySequences = this.restrictions && this.restrictions.scummySequences;
+        const isGloriousZeros = this.restrictions && this.restrictions.gloriousZeros;
 
         // FIXED: Moon icon pack special matching
         if (this.currentIconPack === 'moon') {
@@ -2605,8 +2985,13 @@ class NumberConnectionGame {
                     
                     // Same phase match = 1 point
                     if (connectedCell.number === number) {
-                        totalPoints += 1;
-                        cellPoints += 1;
+                        let pts = 1;
+                        // Glorious Zeros: 0+0 = 10 points!
+                        if (isGloriousZeros && number === 0 && connectedCell.number === 0) {
+                            pts = 10;
+                        }
+                        matchPoints += pts;
+                        cellPoints += pts;
                         highlightCells.add(connectedIndex);
                         cellsToOwn.add(connectedIndex);
                     }
@@ -2616,7 +3001,7 @@ class NumberConnectionGame {
                     // 🌑(0)+🌕(4), 🌒(1)+🌖(5), 🌓(2)+🌗(6), 🌔(3)+🌘(7)
                     const diff = Math.abs(connectedCell.number - number);
                     if (diff === 4) {
-                        totalPoints += 2;
+                        matchPoints += 2;
                         cellPoints += 2;
                         highlightCells.add(connectedIndex);
                         cellsToOwn.add(connectedIndex);
@@ -2635,14 +3020,19 @@ class NumberConnectionGame {
                     let cellPoints = 0;
                     
                     if (connectedCell.number === number) {
-                        totalPoints += 1;
-                        cellPoints += 1;
+                        let pts = 1;
+                        // Glorious Zeros: 0+0 = 10 points!
+                        if (isGloriousZeros && number === 0 && connectedCell.number === 0) {
+                            pts = 10;
+                        }
+                        matchPoints += pts;
+                        cellPoints += pts;
                         highlightCells.add(connectedIndex);
                         cellsToOwn.add(connectedIndex);
                     }
                     
                     if (connectedCell.number + number === 10) {
-                        totalPoints += 2;
+                        matchPoints += 2;
                         cellPoints += 2;
                         highlightCells.add(connectedIndex);
                         cellsToOwn.add(connectedIndex);
@@ -2655,11 +3045,12 @@ class NumberConnectionGame {
             });
         }
 
-        // Rest of the function stays the same...
+        // Calculate sequence points
+        let sequencePoints = 0;
         const sequences = this.findAllSequences(cellIndex, number, state);
         sequences.forEach(sequence => {
             if (sequence.length >= 3) {
-                totalPoints += sequence.length;
+                sequencePoints += sequence.length;
                 sequence.forEach(idx => {
                     highlightCells.add(idx);
                     cellsToOwn.add(idx);
@@ -2669,6 +3060,13 @@ class NumberConnectionGame {
                 });
             }
         });
+        
+        // Scummy Sequences: Only count sequence points, ignore match/tens
+        if (isScummySequences) {
+            totalPoints = sequencePoints;
+        } else {
+            totalPoints = matchPoints + sequencePoints;
+        }
 
         if (updateOwnership && totalPoints > 0) {
             cellsToOwn.forEach(index => {
@@ -2854,31 +3252,55 @@ class NumberConnectionGame {
             
             // Remove ALL possible state classes first
             cell.classList.remove('empty', 'neutral', 'player-owned', 'ai-owned', 
-                                'tutorial-highlight', 'drag-over', 'nearby-highlight');
+                                'tutorial-highlight', 'drag-over', 'nearby-highlight', 'fog-hidden');
+            
+            // Fog of War mode: Check if cell should be visible
+            const isFogMode = this.gameMode === 'fogofwar';
+            const isVisible = !isFogMode || this.visibleCells.has(index);
             
             if (cellData) {
-                // FIXED: Validate number is in range
-                let displayNumber = cellData.number;
-                if (displayNumber >= maxNum) {
-                    console.warn(`Cell ${index} has invalid number ${displayNumber} for ${this.currentIconPack}`);
-                    displayNumber = displayNumber % maxNum; // Wrap to valid range
-                }
-                
-                cell.textContent = IconPacks[this.currentIconPack](displayNumber);
-                
-                // FIXED: Apply owner color classes immediately
-                if (cellData.owner === 'player') {
-                    cell.classList.add('player-owned');
-                } else if (cellData.owner === 'ai') {
-                    cell.classList.add('ai-owned');
+                if (isFogMode && !isVisible) {
+                    // Cell has content but is hidden in fog
+                    cell.textContent = '🌫️';
+                    cell.classList.add('fog-hidden');
                 } else {
-                    cell.classList.add('neutral');
+                    // FIXED: Validate number is in range
+                    let displayNumber = cellData.number;
+                    if (displayNumber >= maxNum) {
+                        console.warn(`Cell ${index} has invalid number ${displayNumber} for ${this.currentIconPack}`);
+                        displayNumber = displayNumber % maxNum; // Wrap to valid range
+                    }
+                    
+                    cell.textContent = IconPacks[this.currentIconPack](displayNumber);
+                    
+                    // FIXED: Apply owner color classes immediately
+                    if (cellData.owner === 'player') {
+                        cell.classList.add('player-owned');
+                    } else if (cellData.owner === 'ai') {
+                        cell.classList.add('ai-owned');
+                    } else {
+                        cell.classList.add('neutral');
+                    }
                 }
             } else {
                 cell.textContent = '○';
                 cell.classList.add('empty');
                 cell.style.pointerEvents = '';
             }
+        });
+    }
+    
+    // Fog of War: Reveal a cell and its adjacent cells
+    revealCell(cellIndex) {
+        if (this.gameMode !== 'fogofwar') return;
+        
+        // Reveal the placed cell
+        this.visibleCells.add(cellIndex);
+        
+        // Reveal adjacent/connected cells
+        const connectedCells = this.getConnectedCells(cellIndex);
+        connectedCells.forEach(idx => {
+            this.visibleCells.add(idx);
         });
     }
 
@@ -2907,11 +3329,30 @@ class NumberConnectionGame {
         if (this.gameEnded) return;
         this.gameEnded = true;
         this.stopBlitzMode();
+        
+        // Stop Testing Time timer if running
+        if (this.testingTimeInterval) {
+            clearInterval(this.testingTimeInterval);
+            this.testingTimeInterval = null;
+        }
 
         const playerCells = this.mapState.filter(cell => cell && cell.owner === 'player').length;
         const aiCells = this.mapState.filter(cell => cell && cell.owner === 'ai').length;
         
-        const isNoBonus = this.gameMode === 'nobonus' || this.gameMode === 'suddendeath';
+        // Territorial mode: Final scores ARE the owned cell counts
+        if (this.gameMode === 'territorial') {
+            this.playerScore = playerCells;
+            this.aiScore = aiCells;
+            this.updateScore('player');
+            this.updateScore('ai');
+            this.showMessage(`🏰 TERRITORIAL: You claimed ${playerCells} tiles, AI claimed ${aiCells}!`);
+            this.animateBonusCells();
+        }
+        
+        // NEW: Check both gamemode and restriction for no bonus
+        // Also skip bonus for Territorial since the cell count IS the score
+        const isNoBonus = this.gameMode === 'nobonus' || this.gameMode === 'suddendeath' || 
+                          this.gameMode === 'territorial' || this.restrictions.noBonus;
         
         if (!isNoBonus) {
             this.animateBonusCells();
@@ -2937,7 +3378,7 @@ class NumberConnectionGame {
 
         setTimeout(() => {
             if (!isNoBonus) {
-                // FIXED: Don't apply double points to score, only to shop points later
+                // FIXED: Don't apply double points to score, only to cash later
                 let playerBonusPoints = playerCells;
                 let aiBonusPoints = aiCells;
                 
@@ -2956,7 +3397,7 @@ class NumberConnectionGame {
                 this.stats.highScore = this.playerScore;
             }
 
-            // Award shop points ONLY if player wins
+            // Award cash ONLY if player wins
             this.stats.gamesPlayed++;
 
             let playerWon = false;
@@ -2969,16 +3410,25 @@ class NumberConnectionGame {
             let pointsEarned = 0;
             if (playerWon) {
                 this.stats.wins++;
-                // FIXED: Add base multiplier to calculation
+                // Calculate all multipliers
                 const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
                 const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
                 const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
-                const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1; // NEW: 0.1x per level
+                const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
                 
-                // Add multipliers: base (1.0) + bonuses
-                const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus;
+                // NEW: Calculate restriction multipliers (all 6)
+                let restrictionBonus = 0;
+                if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
+                if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
+                if (this.restrictions.maintainedPaths) restrictionBonus += (this.restrictionMultipliers.maintainedPaths - 1.0);
+                if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
+                if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
+                if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
                 
-                // FIXED: Ensure we always get a valid number
+                // Add all multipliers together
+                const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
+                
+                // Calculate cash earned
                 const basePoints = this.playerScore * 0.1;
                 pointsEarned = Math.round(basePoints * totalMultiplier * 10) / 10;
                 
@@ -3010,12 +3460,22 @@ class NumberConnectionGame {
                     winnerText.style.color = '#4CAF50';
                     SoundEffects.playWin();
                     
-                    // FIXED: Recalculate multipliers here where they're needed
+                    // Recalculate multipliers for display
                     const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
                     const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
                     const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
                     const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
-                    const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus;
+                    
+                    // Calculate restriction bonus for display (all 6)
+                    let restrictionBonus = 0;
+                    if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
+                    if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
+                    if (this.restrictions.maintainedPaths) restrictionBonus += (this.restrictionMultipliers.maintainedPaths - 1.0);
+                    if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
+                    if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
+                    if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
+                    
+                    const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
                     
                     // Get difficulty name
                     const difficultyNames = {
@@ -3032,28 +3492,31 @@ class NumberConnectionGame {
                     
                     const modeName = this.gameMode.charAt(0).toUpperCase() + this.gameMode.slice(1).replace(/([A-Z])/g, ' $1');
                     
-                    // Show addition with base multiplier
+                    // Build multiplier breakdown text
                     let multiplierText = `Mode: ${gameModeMultiplier.toFixed(2)}x, AI: ${aiDifficultyMultiplier.toFixed(2)}x`;
                     if (baseMultiplierBonus > 0) {
                         multiplierText += `, Base: +${baseMultiplierBonus.toFixed(2)}x`;
+                    }
+                    if (restrictionBonus !== 0) {
+                        multiplierText += `, Restrictions: ${restrictionBonus >= 0 ? '+' : ''}${restrictionBonus.toFixed(2)}x`;
                     }
                     if (this.doublePointsActive) {
                         multiplierText += `, 💎: +${doublePointsMultiplier.toFixed(2)}x`;
                     }
                     multiplierText += ` = ${totalMultiplier.toFixed(2)}x total`;
                     
-                    shopPointsEarned.textContent = `💰 Earned ${pointsEarned.toFixed(1)} shop points!\n${modeName} (${difficultyName})\n${multiplierText}`;
+                    shopPointsEarned.textContent = `💰 Earned ${pointsEarned.toFixed(1)} pts!\n${modeName} (${difficultyName})\n${multiplierText}`;
                     shopPointsEarned.style.whiteSpace = 'pre-line';
                 } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
                     winnerText.textContent = '🤖 AI WINS! 🤖';
                     winnerText.style.color = '#f44336';
-                    shopPointsEarned.textContent = `No points earned - you lost!`;
+                    shopPointsEarned.textContent = `No pts earned - you lost!`;
                     shopPointsEarned.style.whiteSpace = 'normal';
                     SoundEffects.playLose();
                 } else {
                     winnerText.textContent = '🤝 TIE GAME! 🤝';
                     winnerText.style.color = '#FF9800';
-                    shopPointsEarned.textContent = `No points earned - it's a tie!`;
+                    shopPointsEarned.textContent = `No pts earned - it's a tie!`;
                     shopPointsEarned.style.whiteSpace = 'normal';
                 }
 
@@ -3133,6 +3596,18 @@ class NumberConnectionGame {
         this.turnCount = 0;
         this.extraTurn = false;
         
+        // Reset Testing Time properties
+        this.testingTimeRemaining = 10.0;
+        if (this.testingTimeInterval) {
+            clearInterval(this.testingTimeInterval);
+            this.testingTimeInterval = null;
+        }
+        const timerDisplay = document.getElementById('testingTimeTimer');
+        if (timerDisplay) timerDisplay.remove();
+        
+        // Reset Fog of War visibility
+        this.visibleCells = new Set();
+        
         this.stopBlitzMode();
         
         document.getElementById('nextCardPreview').classList.remove('show');
@@ -3159,7 +3634,7 @@ function showShop() {
     SoundEffects.playButton();
     const modal = document.getElementById('shopModal');
     
-    // Update shop points display
+    // Update cash display
     document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
     
     // Render shop items
@@ -3172,6 +3647,27 @@ function closeShop() {
     SoundEffects.playButton();
     document.getElementById('shopModal').classList.remove('show');
     game.updatePowerupDisplay();
+}
+
+function goToSettingsSection(sectionId) {
+    SoundEffects.playButton();
+    // Close the shop
+    document.getElementById('shopModal').classList.remove('show');
+    // Open settings
+    document.getElementById('settingsModal').classList.add('show');
+    // Scroll to the section after a brief delay to allow modal to open
+    setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a highlight effect
+            element.style.transition = 'box-shadow 0.3s';
+            element.style.boxShadow = '0 0 20px 5px rgba(102, 126, 234, 0.6)';
+            setTimeout(() => {
+                element.style.boxShadow = '';
+            }, 1500);
+        }
+    }, 100);
 }
 
 function renderShopItems() {
@@ -3250,7 +3746,7 @@ function renderShopItems() {
         div.className = owned ? 'shop-item owned' : 'shop-item';
         div.innerHTML = `
             <div class="shop-item-name">🤖 ${level.name}</div>
-            <div class="shop-item-multiplier">${level.multiplier}x Shop Points</div>
+            <div class="shop-item-multiplier">${level.multiplier}x pts</div>
             <div class="shop-item-price">${owned ? 'Owned' : level.price + ' pts'}</div>
             <button onclick="buyPermanent('aiLevel', '${level.value}', ${level.price})" 
                     ${owned || game.shop.points < level.price ? 'disabled' : ''}>
@@ -3291,21 +3787,26 @@ function renderShopItems() {
     modeContainer.innerHTML = '';
 
     const modes = [
-        { value: 'blitz', name: 'Blitz', price: 3, multiplier: 2.5 },
-        { value: 'suddendeath', name: 'Sudden Death', price: 10, multiplier: 3.0 },
-        { value: 'chainreaction', name: 'Chain Reaction', price: 20, multiplier: 0.8 },
-        { value: 'reverserules', name: 'Reverse Rules', price: 30, multiplier: 5.0 }, // FIXED: Changed from 35 to 30
-        { value: 'subtraction', name: 'Subtraction', price: 40, multiplier: 1.5 }, // FIXED
-        { value: 'mirrormatch', name: 'Mirror Match', price: 50, multiplier: 1.5 }
+        { value: 'blitz', name: 'Blitz', price: 3, multiplier: 2.5, desc: 'Race against the clock! AI moves automatically every few seconds.' },
+        { value: 'suddendeath', name: 'Sudden Death', price: 7.5, multiplier: 3.0, desc: 'One mistake and you lose! First player to score wins the game.' },
+        { value: 'chainreaction', name: 'Chain Reaction', price: 17.5, multiplier: 0.8, desc: 'Cells explode when scored! Create massive chain combos.' },
+        { value: 'reverserules', name: 'Reverse Rules', price: 25, multiplier: 5.0, desc: 'Everything is backwards! Lower scores win, sequences go down.' },
+        { value: 'mirrormatch', name: 'Mirror Match', price: 37.5, multiplier: 1.5, desc: 'You and AI get the same cards! Pure strategy, no luck.' },
+        { value: 'subtraction', name: 'Subtraction', price: 50, multiplier: 1.5, desc: 'Numbers subtract instead of add! Reach zero to score.' },
+        { value: 'testingtime', name: 'Testing Time', price: 67, multiplier: 1.5, desc: '10 seconds per turn, decreasing by 0.1s each turn! Race the clock.' },
+        { value: 'ludicrouslylucky', name: 'Ludicrously Lucky', price: 80, multiplier: 3.0, desc: 'Game could randomly end any turn after turn 3! High risk, high reward.' },
+        { value: 'fogofwar', name: 'Fog of War', price: 100, multiplier: 1.75, desc: 'Only placed cards and adjacent cells are visible. Navigate blind!' },
+        { value: 'territorial', name: 'Territorial', price: 125, multiplier: 2.0, desc: 'No points during play - only owned cells count at game end!' }
     ];
 
     modes.forEach(mode => {
         const owned = game.shop.owned.modes.includes(mode.value);
         const div = document.createElement('div');
         div.className = owned ? 'shop-item owned' : 'shop-item';
+        div.title = mode.desc;
         div.innerHTML = `
             <div class="shop-item-name">🎮 ${mode.name}</div>
-            <div class="shop-item-multiplier">${mode.multiplier}x Shop Points</div>
+            <div class="shop-item-multiplier">${mode.multiplier}x pts</div>
             <div class="shop-item-price">${owned ? 'Owned' : mode.price + ' pts'}</div>
             <button onclick="buyPermanent('mode', '${mode.value}', ${mode.price})" 
                     ${owned || game.shop.points < mode.price ? 'disabled' : ''}>
@@ -3367,6 +3868,38 @@ function renderShopItems() {
         `;
         iconContainer.appendChild(div);
     });
+
+    // Restrictions
+    const restrictionContainer = document.getElementById('restrictionShopItems');
+    if (restrictionContainer) {
+        restrictionContainer.innerHTML = '';
+        
+        const restrictions = [
+            { value: 'noBonus', name: 'No Bonus Points', price: 5, multiplier: 1.2, desc: 'Disable end-game cell bonus points. A true test of scoring skill!' },
+            { value: 'aiFirst', name: 'AI First', price: 10, multiplier: 1.05, desc: 'Let the AI make the first move. Start at a disadvantage!' },
+            { value: 'maintainedPaths', name: 'Maintained Paths', price: 20, multiplier: 0.8, desc: 'Full grid connections instead of random. More predictable but easier!' },
+            { value: 'singlePath', name: 'Single Path', price: 30, multiplier: 1.4, desc: 'Map is a single winding path - strategic blocking becomes crucial!' },
+            { value: 'scummySequences', name: 'Scummy Sequences', price: 40, multiplier: 1.6, desc: 'Only sequences score points! Matches and tens give nothing.' },
+            { value: 'gloriousZeros', name: 'Glorious Zeros', price: 50, multiplier: 0.9, desc: 'Zero pairs (0+0) give 10 points instead of 1! Chase those zeros.' }
+        ];
+        
+        restrictions.forEach(restriction => {
+            const owned = game.shop.owned.restrictions.includes(restriction.value);
+            const div = document.createElement('div');
+            div.className = owned ? 'shop-item owned' : 'shop-item';
+            div.title = restriction.desc;
+            div.innerHTML = `
+                <div class="shop-item-name">🔒 ${restriction.name}</div>
+                <div class="shop-item-multiplier">${restriction.multiplier}x pts</div>
+                <div class="shop-item-price">${owned ? 'Owned' : restriction.price + ' pts'}</div>
+                <button onclick="buyPermanent('restriction', '${restriction.value}', ${restriction.price})" 
+                        ${owned || game.shop.points < restriction.price ? 'disabled' : ''}>
+                    ${owned ? '✓ Owned' : 'Buy'}
+                </button>
+            `;
+            restrictionContainer.appendChild(div);
+        });
+    }
 
     // NEW: Base Multiplier
     const baseMultiplierContainer = document.getElementById('baseMultiplierShopItems');
@@ -3527,7 +4060,7 @@ function buyBaseMultiplier(price) {
     const newBonus = newLevel * 0.1;
     
     SoundEffects.playUnlock();
-    alert(`✨ Base Multiplier upgraded to Level ${newLevel}!\nYou now get +${newBonus.toFixed(1)}x on ALL shop point earnings!`);
+    alert(`✨ Base Multiplier upgraded to Level ${newLevel}!\nYou now get +${newBonus.toFixed(1)}x on ALL pts earnings!`);
 }
 
 function buyPermanent(type, value, price) {
@@ -3577,6 +4110,16 @@ function buyPermanent(type, value, price) {
                 game.shop.owned.aiLevels.push(value);
             }
             break;
+        case 'restriction':
+            if (!game.shop.owned.restrictions) {
+                game.shop.owned.restrictions = [];
+            }
+            if (game.shop.owned.restrictions.includes(value)) {
+                alreadyOwned = true;
+            } else {
+                game.shop.owned.restrictions.push(value);
+            }
+            break;
     }
     
     if (alreadyOwned) {
@@ -3586,7 +4129,8 @@ function buyPermanent(type, value, price) {
     
     game.shop.points -= price;
     game.saveShop();
-    game.updateStatsDisplay();// Continuing from buyPermanent function...
+    game.updateStatsDisplay();
+    game.updateRestrictionsUI(); // Update restrictions visibility in settings
 
     document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
 
