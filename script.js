@@ -2438,7 +2438,7 @@ class NumberConnectionGame {
         
         const multiplierElement = document.getElementById('multipliersValue');
         if (multiplierElement) {
-            multiplierElement.textContent = `${totalMultiplier.toFixed(2)}x`;
+            multiplierElement.innerHTML = `${totalMultiplier.toFixed(2)}x <span class="dropdown-arrow">▼</span>`;
             
             // Add visual indicator if multiplier is high
             if (totalMultiplier >= 8.0) {
@@ -2455,6 +2455,80 @@ class NumberConnectionGame {
                 multiplierElement.style.fontSize = '1em';
             }
         }
+        
+        // Update the dropdown breakdown
+        this.updateMultiplierBreakdown(gameModeMultiplier, aiDifficultyMultiplier, doublePointsMultiplier, baseMultiplierBonus, restrictionBonus, totalMultiplier);
+    }
+    
+    updateMultiplierBreakdown(gameModeMultiplier, aiDifficultyMultiplier, doublePointsMultiplier, baseMultiplierBonus, restrictionBonus, totalMultiplier) {
+        const breakdownEl = document.getElementById('multiplierBreakdown');
+        if (!breakdownEl) return;
+        
+        let html = '';
+        
+        // Base
+        html += `<div class="multiplier-item"><span class="multiplier-item-name">Base</span><span class="multiplier-item-value">1.00x</span></div>`;
+        
+        // Game Mode
+        const gameModeBonus = gameModeMultiplier - 1.0;
+        if (gameModeBonus !== 0) {
+            const sign = gameModeBonus >= 0 ? '+' : '';
+            const cls = gameModeBonus < 0 ? 'negative' : '';
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">Game Mode (${this.gameMode})</span><span class="multiplier-item-value ${cls}">${sign}${gameModeBonus.toFixed(2)}x</span></div>`;
+        }
+        
+        // AI Difficulty
+        const aiBonus = aiDifficultyMultiplier - 1.0;
+        if (aiBonus !== 0) {
+            const sign = aiBonus >= 0 ? '+' : '';
+            const cls = aiBonus < 0 ? 'negative' : '';
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">AI Difficulty</span><span class="multiplier-item-value ${cls}">${sign}${aiBonus.toFixed(2)}x</span></div>`;
+        }
+        
+        // Base Multiplier upgrades
+        if (baseMultiplierBonus > 0) {
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">Base Multiplier Upgrade</span><span class="multiplier-item-value">+${baseMultiplierBonus.toFixed(2)}x</span></div>`;
+        }
+        
+        // Double Points
+        if (doublePointsMultiplier > 0) {
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">💎 Double Points</span><span class="multiplier-item-value">+${doublePointsMultiplier.toFixed(2)}x</span></div>`;
+        }
+        
+        // Individual restrictions
+        if (this.restrictions.noBonus) {
+            const bonus = this.restrictionMultipliers.noBonus - 1.0;
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 No Bonus</span><span class="multiplier-item-value">+${bonus.toFixed(2)}x</span></div>`;
+        }
+        if (this.restrictions.aiFirst) {
+            const bonus = this.restrictionMultipliers.aiFirst - 1.0;
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 AI First</span><span class="multiplier-item-value">+${bonus.toFixed(2)}x</span></div>`;
+        }
+        if (this.restrictions.maintainedPaths) {
+            const bonus = this.restrictionMultipliers.maintainedPaths - 1.0;
+            const cls = bonus < 0 ? 'negative' : '';
+            const sign = bonus >= 0 ? '+' : '';
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 Maintained Paths</span><span class="multiplier-item-value ${cls}">${sign}${bonus.toFixed(2)}x</span></div>`;
+        }
+        if (this.restrictions.singlePath) {
+            const bonus = this.restrictionMultipliers.singlePath - 1.0;
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 Single Path</span><span class="multiplier-item-value">+${bonus.toFixed(2)}x</span></div>`;
+        }
+        if (this.restrictions.scummySequences) {
+            const bonus = this.restrictionMultipliers.scummySequences - 1.0;
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 Scummy Sequences</span><span class="multiplier-item-value">+${bonus.toFixed(2)}x</span></div>`;
+        }
+        if (this.restrictions.gloriousZeros) {
+            const bonus = this.restrictionMultipliers.gloriousZeros - 1.0;
+            const cls = bonus < 0 ? 'negative' : '';
+            const sign = bonus >= 0 ? '+' : '';
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 Glorious Zeros</span><span class="multiplier-item-value ${cls}">${sign}${bonus.toFixed(2)}x</span></div>`;
+        }
+        
+        // Total
+        html += `<div class="multiplier-item total"><span class="multiplier-item-name">Total</span><span class="multiplier-item-value">${totalMultiplier.toFixed(2)}x</span></div>`;
+        
+        breakdownEl.innerHTML = html;
     }
 
     createFloatingCard(number, startX, startY, endX, endY, isPlayer) {
@@ -4211,7 +4285,7 @@ function closeStats() {
 
 function resetStats() {
     SoundEffects.playButton();
-    if (confirm('Are you sure you want to reset all statistics AND shop data? This will reset your points and lock all purchased items!')) {
+    if (confirm('Are you sure you want to reset all statistics, shop data, AND casino progress? This will reset your points and lock all purchased items!')) {
         // Reset stats
         game.stats = {
             wins: 0,
@@ -4223,7 +4297,7 @@ function resetStats() {
         };
         game.saveStats();
         
-        // Reset shop
+        // Reset shop with FULL structure
         game.shop = {
             points: 0,
             owned: {
@@ -4231,14 +4305,40 @@ function resetStats() {
                 modes: ['classic', 'nobonus', 'survival'],
                 themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
                 icons: ['default'],
-                aiLevels: ['0.4', '0.5', '0.6'] // Default: Intermediate, Skilled, Advanced
+                aiLevels: ['0.4', '0.5', '0.6'],
+                restrictions: [],
+                permanentPowerups: {
+                    skipAI: 0,
+                    replace: 0,
+                    viewNext: 0,
+                    undo: 0,
+                    pickCard: 0,
+                    doublePoints: 0
+                },
+                baseMultiplier: 0
             }
         };
         game.saveShop();
         
+        // Reset casino owned games
+        localStorage.setItem('ownedCasinoGames', JSON.stringify([]));
+        
+        // Reset restrictions state
+        game.restrictions = {
+            noBonus: false,
+            aiFirst: false,
+            maintainedPaths: false,
+            singlePath: false,
+            scummySequences: false,
+            gloriousZeros: false
+        };
+        game.saveRestrictions();
+        
         // Update all displays
         game.updateStatsDisplay();
         game.updateSettingsUI();
+        game.updateRestrictionsUI();
+        game.updateMultiplierDisplay();
         
         // If shop is open, update it
         const shopModal = document.getElementById('shopModal');
@@ -4247,8 +4347,15 @@ function resetStats() {
             renderShopItems();
         }
         
+        // If casino is open, update it
+        const gamblingModal = document.getElementById('gamblingModal');
+        if (gamblingModal.classList.contains('show')) {
+            document.getElementById('gamblingPointsDisplay').textContent = '0.0';
+            updateCasinoUI();
+        }
+        
         SoundEffects.playButton();
-        alert('Statistics and shop data have been completely reset!');
+        alert('All statistics, shop data, and casino progress have been completely reset!');
     }
 }
 
@@ -4367,7 +4474,105 @@ if (multiplierTitle) {
 
 // ==================== GAMBLING SYSTEM ====================
 let isFlipping = false;
+let isGuessing = false;
 let currentCasinoGame = null;
+let hlHiddenNumber = 0;
+let hlShownNumber = 0;
+
+// Casino game prices
+const casinoGamePrices = {
+    coinflip: 15,
+    slots: 35,
+    higherlower: 70,
+    blackjack: 150
+};
+
+// Check which casino games are owned
+function getCasinoOwnedGames() {
+    const owned = JSON.parse(localStorage.getItem('ownedCasinoGames') || '[]');
+    return owned;
+}
+
+function saveCasinoOwnedGames(owned) {
+    localStorage.setItem('ownedCasinoGames', JSON.stringify(owned));
+}
+
+function isCasinoGameOwned(gameId) {
+    const owned = getCasinoOwnedGames();
+    return owned.includes(gameId);
+}
+
+function buyCasinoGame(gameId) {
+    const price = casinoGamePrices[gameId];
+    if (game.shop.points >= price) {
+        game.shop.points -= price;
+        const owned = getCasinoOwnedGames();
+        owned.push(gameId);
+        saveCasinoOwnedGames(owned);
+        game.saveShop();
+        updateCasinoUI();
+        document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+        SoundEffects.playUnlock();
+        return true;
+    }
+    return false;
+}
+
+function updateCasinoUI() {
+    const games = ['coinflip', 'slots', 'higherlower', 'blackjack']; // Order by price
+    const comingSoon = ['slots', 'blackjack'];
+    
+    games.forEach(gameId => {
+        const card = document.getElementById(gameId + 'Card');
+        if (!card) return;
+        
+        const isOwned = isCasinoGameOwned(gameId);
+        const isComingSoon = comingSoon.includes(gameId);
+        const canAfford = game.shop.points >= casinoGamePrices[gameId];
+        
+        // Reset classes
+        card.classList.remove('locked', 'can-afford');
+        
+        if (isOwned) {
+            card.onclick = () => openCasinoGame(gameId);
+        } else {
+            card.classList.add('locked');
+            
+            // Add can-afford class if player has enough points and it's not coming soon
+            if (canAfford && !isComingSoon) {
+                card.classList.add('can-afford');
+            }
+            
+            card.onclick = () => {
+                if (isComingSoon) {
+                    alert('This game is coming soon!');
+                    return;
+                }
+                // Try to buy
+                if (game.shop.points >= casinoGamePrices[gameId]) {
+                    if (confirm(`Buy ${gameId.replace('higherlower', 'Higher/Lower').replace('coinflip', 'Coin Flip')} for ${casinoGamePrices[gameId]} points?`)) {
+                        buyCasinoGame(gameId);
+                    }
+                } else {
+                    alert(`Not enough points! Need ${casinoGamePrices[gameId]} points.`);
+                }
+            };
+        }
+        
+        // Update lock icon
+        if (!isOwned && !isComingSoon) {
+            if (!card.querySelector('.casino-unlock-price')) {
+                const priceTag = document.createElement('div');
+                priceTag.className = 'casino-unlock-price';
+                priceTag.textContent = `🔓 ${casinoGamePrices[gameId]} pts`;
+                card.appendChild(priceTag);
+            }
+        } else if (isOwned) {
+            const existingPrice = card.querySelector('.casino-unlock-price');
+            if (existingPrice) existingPrice.remove();
+        }
+    });
+}
 
 function openGambling() {
     const modal = document.getElementById('gamblingModal');
@@ -4375,6 +4580,9 @@ function openGambling() {
     document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
     document.getElementById('gamblingResult').textContent = '';
     document.getElementById('gamblingResult').className = 'gambling-result';
+    
+    // Update casino UI
+    updateCasinoUI();
     
     // Reset to game selection view
     backToCasinoMenu();
@@ -4386,13 +4594,39 @@ function closeGambling() {
 }
 
 function openCasinoGame(gameId) {
+    const comingSoon = ['slots', 'blackjack'];
+    
+    if (comingSoon.includes(gameId)) {
+        alert('This game is coming soon!');
+        return;
+    }
+    
+    if (!isCasinoGameOwned(gameId)) {
+        // Trigger buy flow
+        if (game.shop.points >= casinoGamePrices[gameId]) {
+            if (confirm(`Buy ${gameId.replace('higherlower', 'Higher/Lower')} for ${casinoGamePrices[gameId]} points?`)) {
+                if (!buyCasinoGame(gameId)) return;
+            } else {
+                return;
+            }
+        } else {
+            alert(`Not enough points! Need ${casinoGamePrices[gameId]} points.`);
+            return;
+        }
+    }
+    
+    document.getElementById('casinoGamesGrid').style.display = 'none';
+    
     if (gameId === 'coinflip') {
-        document.getElementById('casinoGamesGrid').style.display = 'none';
         document.getElementById('coinflipGame').style.display = 'block';
         currentCasinoGame = 'coinflip';
-        SoundEffects.playButton();
+    } else if (gameId === 'higherlower') {
+        document.getElementById('higherlowerGame').style.display = 'block';
+        currentCasinoGame = 'higherlower';
+        setupHigherLower();
     }
-    // Future games can be added here
+    
+    SoundEffects.playButton();
 }
 
 function backToCasinoMenu() {
@@ -4402,11 +4636,22 @@ function backToCasinoMenu() {
     const coinflipGame = document.getElementById('coinflipGame');
     if (coinflipGame) coinflipGame.style.display = 'none';
     
+    const higherlowerGame = document.getElementById('higherlowerGame');
+    if (higherlowerGame) higherlowerGame.style.display = 'none';
+    
     // Reset coin state
     const coin = document.getElementById('gamblingCoin');
     if (coin) coin.classList.remove('flipping', 'result-tails');
     
+    // Reset higher/lower
+    const hiddenCard = document.getElementById('hlHiddenCard');
+    if (hiddenCard) hiddenCard.classList.remove('revealed');
+    
     currentCasinoGame = null;
+    isGuessing = false;
+    
+    // Update points display
+    document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
 }
 
 // Close gambling modal when clicking outside
@@ -4416,8 +4661,8 @@ document.getElementById('gamblingModal').addEventListener('click', (e) => {
     }
 });
 
-function setMaxBet() {
-    document.getElementById('betAmount').value = Math.floor(game.shop.points);
+function setMaxBet(inputId) {
+    document.getElementById(inputId).value = Math.floor(game.shop.points);
 }
 
 function flipCoin(choice) {
@@ -4500,4 +4745,116 @@ function flipCoin(choice) {
             betInput.value = currentPoints > 0 ? currentPoints : 1;
         }
     }, 2000);
+}
+
+// ==================== HIGHER/LOWER GAME ====================
+function setupHigherLower() {
+    // Generate two different random numbers 1-100
+    hlHiddenNumber = Math.floor(Math.random() * 100) + 1;
+    hlShownNumber = Math.floor(Math.random() * 100) + 1;
+    
+    // Make sure they're different
+    while (hlShownNumber === hlHiddenNumber) {
+        hlShownNumber = Math.floor(Math.random() * 100) + 1;
+    }
+    
+    // Update UI
+    document.getElementById('hlShownNumber').textContent = hlShownNumber;
+    document.getElementById('hlHiddenNumber').textContent = hlHiddenNumber;
+    document.getElementById('hlHiddenNumber').style.display = 'none';
+    document.querySelector('#hlHiddenCard .hl-question').style.display = 'block';
+    document.getElementById('hlHiddenCard').classList.remove('revealed');
+    document.getElementById('hlResult').textContent = '';
+    document.getElementById('hlResult').className = 'gambling-result';
+    
+    // Enable buttons
+    document.getElementById('higherBtn').disabled = false;
+    document.getElementById('lowerBtn').disabled = false;
+    
+    isGuessing = false;
+}
+
+function guessHigherLower(guess) {
+    if (isGuessing) return;
+    
+    const betInput = document.getElementById('hlBetAmount');
+    const bet = parseInt(betInput.value) || 0;
+    
+    if (bet <= 0) {
+        document.getElementById('hlResult').textContent = '❌ Enter a valid bet amount!';
+        document.getElementById('hlResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    if (bet > game.shop.points) {
+        document.getElementById('hlResult').textContent = '❌ Not enough points!';
+        document.getElementById('hlResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    isGuessing = true;
+    
+    // Disable buttons
+    document.getElementById('higherBtn').disabled = true;
+    document.getElementById('lowerBtn').disabled = true;
+    
+    // Play sound
+    SoundEffects.playButton();
+    
+    // Reveal the hidden number
+    document.querySelector('#hlHiddenCard .hl-question').style.display = 'none';
+    document.getElementById('hlHiddenNumber').style.display = 'block';
+    document.getElementById('hlHiddenCard').classList.add('revealed');
+    
+    const resultDiv = document.getElementById('hlResult');
+    
+    // Determine if correct
+    const isHigher = hlHiddenNumber > hlShownNumber;
+    const won = (guess === 'higher' && isHigher) || (guess === 'lower' && !isHigher);
+    
+    setTimeout(() => {
+        if (won) {
+            const winnings = bet * 3;
+            game.shop.points += bet * 2; // Net gain is 2x bet (already had bet, now have 3x)
+            resultDiv.textContent = `🎉 Correct! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You won ${winnings} points!`;
+            resultDiv.className = 'gambling-result win';
+            SoundEffects.playScore();
+        } else {
+            game.shop.points -= bet;
+            resultDiv.textContent = `💔 Wrong! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You lost ${bet} points!`;
+            resultDiv.className = 'gambling-result lose';
+            SoundEffects.playLose();
+        }
+        
+        // Update displays
+        const currentPoints = Math.floor(game.shop.points);
+        document.getElementById('gamblingPointsDisplay').textContent = currentPoints;
+        game.saveShop();
+        document.getElementById('shopPointsDisplay').textContent = currentPoints;
+        document.getElementById('shopPointsStat').textContent = currentPoints;
+        
+        // Update bet input if it exceeds current points
+        if (parseInt(betInput.value) > game.shop.points) {
+            betInput.value = currentPoints > 0 ? currentPoints : 1;
+        }
+        
+        // Set up new game after delay
+        setTimeout(() => {
+            setupHigherLower();
+        }, 2000);
+    }, 500);
+}
+
+// ==================== MULTIPLIER DROPDOWN ====================
+function toggleMultiplierDropdown() {
+    const dropdown = document.getElementById('multipliersDropdown');
+    const container = document.getElementById('currentMultipliers');
+    
+    if (dropdown.classList.contains('show')) {
+        dropdown.classList.remove('show');
+        container.classList.remove('dropdown-open');
+    } else {
+        dropdown.classList.add('show');
+        container.classList.add('dropdown-open');
+    }
 }

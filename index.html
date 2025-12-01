@@ -71,10 +71,17 @@
                         </div>
                     </div>
 
-                    <!-- NEW: Current Multipliers Display -->
+                    <!-- NEW: Current Multipliers Display with Dropdown -->
                     <div class="current-multipliers" id="currentMultipliers">
-                        <div class="multipliers-title">Shop Points Multiplier</div>
-                        <div class="multipliers-value" id="multipliersValue">1.0x</div>
+                        <div class="multipliers-header" onclick="toggleMultiplierDropdown()">
+                            <div class="multipliers-title">Shop Points Multiplier</div>
+                            <div class="multipliers-value" id="multipliersValue">1.0x <span class="dropdown-arrow">▼</span></div>
+                        </div>
+                        <div class="multipliers-dropdown" id="multipliersDropdown">
+                            <div class="multiplier-breakdown" id="multiplierBreakdown">
+                                <!-- Filled dynamically -->
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- NEW: Power-ups Menu moved outside and below -->
@@ -268,22 +275,31 @@
                     <div class="points-value" id="gamblingPointsDisplay">0</div>
                 </div>
 
-                <!-- Game Selection View -->
+                <!-- Game Selection View (ordered by price) -->
                 <div class="casino-games-grid" id="casinoGamesGrid">
-                    <div class="casino-game-card" onclick="openCasinoGame('coinflip')">
+                    <div class="casino-game-card" id="coinflipCard" onclick="openCasinoGame('coinflip')">
                         <div class="casino-game-icon">🪙</div>
                         <div class="casino-game-name">Coin Flip</div>
                         <div class="casino-game-desc">50/50 chance, 2x payout!</div>
+                        <div class="casino-game-price">15 pts</div>
                     </div>
-                    <div class="casino-game-card locked">
-                        <div class="casino-game-icon">🎰</div>
+                    <div class="casino-game-card" id="slotsCard" onclick="openCasinoGame('slots')">
+                        <div class="casino-game-icon">�</div>
                         <div class="casino-game-name">Slots</div>
                         <div class="casino-game-desc">Coming Soon!</div>
+                        <div class="casino-game-price">35 pts</div>
                     </div>
-                    <div class="casino-game-card locked">
-                        <div class="casino-game-icon">🎯</div>
+                    <div class="casino-game-card" id="higherlowerCard" onclick="openCasinoGame('higherlower')">
+                        <div class="casino-game-icon">�</div>
                         <div class="casino-game-name">Higher/Lower</div>
+                        <div class="casino-game-desc">Guess right, 3x payout!</div>
+                        <div class="casino-game-price">70 pts</div>
+                    </div>
+                    <div class="casino-game-card" id="blackjackCard" onclick="openCasinoGame('blackjack')">
+                        <div class="casino-game-icon">🃏</div>
+                        <div class="casino-game-name">Blackjack</div>
                         <div class="casino-game-desc">Coming Soon!</div>
+                        <div class="casino-game-price">150 pts</div>
                     </div>
                 </div>
 
@@ -311,7 +327,7 @@
                         <div class="bet-section">
                             <label for="betAmount">Bet Amount:</label>
                             <input type="number" id="betAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
-                            <button onclick="setMaxBet()" class="warning" style="padding: 8px 12px;">Max</button>
+                            <button onclick="setMaxBet('betAmount')" class="warning" style="padding: 8px 12px;">Max</button>
                         </div>
                         
                         <div class="gambling-buttons">
@@ -320,6 +336,44 @@
                             </button>
                             <button onclick="flipCoin('tails')" class="info" id="tailsBtn">
                                 <img src="./assets/tails.png" alt="Tails" style="width: 24px; height: 24px; vertical-align: middle;"> Tails
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Higher/Lower Game View -->
+                <div class="casino-game-view" id="higherlowerGame" style="display: none;">
+                    <button class="casino-back-btn" onclick="backToCasinoMenu()">← Back to Games</button>
+                    
+                    <div class="gambling-game">
+                        <h3>🎯 Higher or Lower</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Is the hidden number higher or lower than yours? Win = 3x your bet!</p>
+                        
+                        <div class="higherlower-container">
+                            <div class="hl-card hidden-card" id="hlHiddenCard">
+                                <span class="hl-question">?</span>
+                                <span class="hl-number" id="hlHiddenNumber" style="display: none;">0</span>
+                            </div>
+                            <div class="hl-vs">VS</div>
+                            <div class="hl-card shown-card" id="hlShownCard">
+                                <span class="hl-number" id="hlShownNumber">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="gambling-result" id="hlResult"></div>
+                        
+                        <div class="bet-section">
+                            <label for="hlBetAmount">Bet Amount:</label>
+                            <input type="number" id="hlBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setMaxBet('hlBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
+                        </div>
+                        
+                        <div class="gambling-buttons">
+                            <button onclick="guessHigherLower('higher')" class="success" id="higherBtn">
+                                ⬆️ Higher
+                            </button>
+                            <button onclick="guessHigherLower('lower')" class="info" id="lowerBtn">
+                                ⬇️ Lower
                             </button>
                         </div>
                     </div>

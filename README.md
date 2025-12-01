@@ -7,7 +7,10 @@ https://arpan-shah-102.github.io/ai-number-battle
 
 ## ✨ What's New
 
-- **🎰 Casino System** - Click the dice in the title to open the Casino! Play coin flip to gamble your shop points (2x payout on win)
+- **🎰 Expanded Casino System** - Now featuring 4 games: Coin Flip (15 pts), Slots (35 pts - coming soon), Higher/Lower (70 pts, 3x payout!), and Blackjack (150 pts - coming soon)
+- **💰 Unlock System** - Games show a green glow when you can afford to unlock them
+- **🎯 Higher/Lower Game** - Guess if the hidden number is higher or lower for 3x payout
+- **📊 Multiplier Dropdown** - Click the multiplier display to see a breakdown of all active bonuses
 - Added 4 new Game Modes: Testing Time, Ludicrously Lucky, Fog of War, Territorial
 - Added 3 new Restrictions: Single Path, Scummy Sequences, Glorious Zeros
 - UX improvement: Shop now includes quick "⚙️ Go to Settings" buttons that jump to the relevant Settings section
@@ -101,7 +104,18 @@ UX note: The Shop includes "⚙️ Go to Settings" buttons for quick navigation 
 
 ## 🎰 Casino
 
-Click the **🎲 dice icons** in the game title to open the Casino! Gamble your shop points for a chance to double them.
+Click the **🎲 dice icons** in the game title to open the Casino! Gamble your shop points on various games.
+
+### Casino Games
+
+| Game | Unlock Price | Payout | Description |
+|------|-------------|--------|-------------|
+| 🪙 **Coin Flip** | 15 pts | 2x | 50/50 chance - choose heads or tails! |
+| 🎰 **Slots** | 35 pts | ??? | Coming Soon! |
+| 🎯 **Higher/Lower** | 70 pts | 3x | Guess if hidden number is higher or lower |
+| 🃏 **Blackjack** | 150 pts | ??? | Coming Soon! |
+
+> Games are displayed in price order. Unlockable games show a **green glow** when you can afford them!
 
 ### Coin Flip
 - Bet any amount of your shop points
@@ -109,6 +123,13 @@ Click the **🎲 dice icons** in the game title to open the Casino! Gamble your 
 - Win = **2x your bet** returned
 - Lose = lose your bet
 - Features animated 3D coin flip!
+
+### Higher/Lower
+- Two random numbers between 1-100 are generated
+- You see one number, the other is hidden
+- Guess if the hidden number is **higher** or **lower**
+- Win = **3x your bet** returned
+- The numbers are never the same!
 
 > **Tip:** Use the "Max" button to bet all your points at once!
 
