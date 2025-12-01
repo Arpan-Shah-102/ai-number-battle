@@ -27,6 +27,7 @@
                     <li><strong>Sequences loop!</strong> 9→0→1 works!</li>
                     <li><strong>All score in one turn!</strong></li>
                     <li><strong>Bonus:</strong> +1pt per owned cell at end</li>
+                    <li><strong>🎰 Casino:</strong> Click the 🎲 dice icons to gamble your shop points!</li>
                 </ul>
             </div>
 
@@ -166,7 +167,7 @@
                     <label for="gamemodeSelect">Game Mode:</label>
                     <select id="gamemodeSelect" onchange="changeGameMode(this.value)">
                         <option value="classic" selected>Classic (1.0x)</option>
-                        <option value="nobonus">No Bonus (1.1x)</option>
+
                         <option value="survival">Survival (1.25x)</option>
                         <option value="blitz">Blitz (2.5x)</option>
                         <option value="suddendeath">Sudden Death (3.0x)</option>
@@ -174,7 +175,7 @@
                         <option value="reverserules">Reverse Rules (5.0x)</option>
                         <option value="mirrormatch">Mirror Match (1.5x)</option>
                         <option value="subtraction">Subtraction (1.5x)</option>
-                        <option value="testingtime">Testing Time (1.5x)</option>
+                        <option value="timetrials">Time Trials (1.5x)</option>
                         <option value="ludicrouslylucky">Ludicrously Lucky (3.0x)</option>
                         <option value="fogofwar">Fog of War (1.75x)</option>
                         <option value="territorial">Territorial (2.0x)</option>
@@ -186,30 +187,49 @@
                     <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">Enable purchased restrictions for bonus pts multipliers! Multipliers stack.</p>
                     
                     <div class="setting-group">
-                        <div class="restriction-option" title="Disable end-game cell bonus points. A true test of scoring skill!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                        <div class="restriction-option" title="Disable end-game cell bonus points. A true test of scoring skill!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionNoBonus" onchange="game.toggleRestriction('noBonus', this.checked)">
-                            <span>No Bonus Points (x1.2 pts) - No end-game cell bonus</span>
+                            <span onclick="document.getElementById('restrictionNoBonus').click()">No Bonus Points (x1.2 pts) - No end-game cell bonus</span>
                         </div>
-                        <div class="restriction-option" title="Let the AI make the first move. Start at a disadvantage!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                        <div class="restriction-option" title="Let the AI make the first move. Start at a disadvantage!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionAIFirst" onchange="game.toggleRestriction('aiFirst', this.checked)">
-                            <span>AI First (x1.05 pts) - AI makes the first move</span>
+                            <span onclick="document.getElementById('restrictionAIFirst').click()">AI First (x1.05 pts) - AI makes the first move</span>
                         </div>
-                        <div class="restriction-option" title="Full grid connections instead of random. More predictable but easier!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                        <div class="restriction-option" title="Full grid connections instead of random. More predictable but easier!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionMaintainedPaths" onchange="game.toggleRestriction('maintainedPaths', this.checked)">
-                            <span>Maintained Paths (x0.8 pts) - Full grid connections</span>
+                            <span onclick="document.getElementById('restrictionMaintainedPaths').click()">Maintained Paths (x0.8 pts) - Full grid connections</span>
                         </div>
-                        <div class="restriction-option" title="Map is a single winding path - strategic blocking becomes crucial!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                        <div class="restriction-option" title="Map is a single winding path - strategic blocking becomes crucial!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionSinglePath" onchange="game.toggleRestriction('singlePath', this.checked)">
-                            <span>Single Path (x1.4 pts) - One winding path only</span>
+                            <span onclick="document.getElementById('restrictionSinglePath').click()">Single Path (x1.4 pts) - One winding path only</span>
                         </div>
-                        <div class="restriction-option" title="Only sequences score points! Matches and tens give nothing." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                        <div class="restriction-option" title="Only sequences score points! Matches and tens give nothing." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionScummySequences" onchange="game.toggleRestriction('scummySequences', this.checked)">
-                            <span>Scummy Sequences (x1.6 pts) - Only sequences score</span>
+                            <span onclick="document.getElementById('restrictionScummySequences').click()">Scummy Sequences (x1.6 pts) - Only sequences score</span>
                         </div>
-                        <div class="restriction-option" title="Zero pairs (0+0) give 10 points instead of 1! Chase those zeros." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: help;">
+                        <div class="restriction-option" title="Zero pairs (0+0) give 10 points instead of 1! Chase those zeros." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionGloriousZeros" onchange="game.toggleRestriction('gloriousZeros', this.checked)">
-                            <span>Glorious Zeros (x0.9 pts) - 0+0 = 10 points!</span>
+                            <span onclick="document.getElementById('restrictionGloriousZeros').click()">Glorious Zeros (x0.9 pts) - 0+0 = 10 points!</span>
                         </div>
+                        <div class="restriction-option" title="Watch two AIs battle! Multiplier depends on your AI difficulty setting." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restrictionAiVsAi" onchange="game.toggleRestriction('aiVsAi', this.checked)">
+                            <span onclick="document.getElementById('restrictionAiVsAi').click()">AI vs AI (variable pts) - Watch AIs battle!</span>
+                        </div>
+                    </div>
+                    
+                    <div id="playerAiDifficultySection" style="display: none; margin-top: 15px;">
+                        <h4 style="margin-bottom: 10px;">🤖 Your AI's Difficulty</h4>
+                        <p style="color: #666; font-size: 0.85em; margin-bottom: 10px;">Choose how strong the AI playing for you is. Weaker = more points!</p>
+                        <select id="playerAiDifficultySelect" onchange="game.changePlayerAiDifficulty(parseFloat(this.value))" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                            <option value="0.2">Novice (2.0x pts)</option>
+                            <option value="0.3">Beginner (1.5x pts)</option>
+                            <option value="0.4">Intermediate (1.0x pts)</option>
+                            <option value="0.5">Skilled (0.5x pts)</option>
+                            <option value="0.6">Advanced (0x pts)</option>
+                            <option value="0.7">Expert (0x pts)</option>
+                            <option value="0.8">Pro (0x pts)</option>
+                            <option value="0.9">Master (0x pts)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -284,21 +304,21 @@
                         <div class="casino-game-price">15 pts</div>
                     </div>
                     <div class="casino-game-card" id="slotsCard" onclick="openCasinoGame('slots')">
-                        <div class="casino-game-icon">�</div>
+                        <div class="casino-game-icon">🎰</div>
                         <div class="casino-game-name">Slots</div>
-                        <div class="casino-game-desc">Coming Soon!</div>
+                        <div class="casino-game-desc">1pt spin, 77.7pt jackpot!</div>
                         <div class="casino-game-price">35 pts</div>
                     </div>
                     <div class="casino-game-card" id="higherlowerCard" onclick="openCasinoGame('higherlower')">
                         <div class="casino-game-icon">�</div>
                         <div class="casino-game-name">Higher/Lower</div>
-                        <div class="casino-game-desc">Guess right, 3x payout!</div>
+                        <div class="casino-game-desc">Guess right, 1.5x payout!</div>
                         <div class="casino-game-price">70 pts</div>
                     </div>
                     <div class="casino-game-card" id="blackjackCard" onclick="openCasinoGame('blackjack')">
                         <div class="casino-game-icon">🃏</div>
                         <div class="casino-game-name">Blackjack</div>
-                        <div class="casino-game-desc">Coming Soon!</div>
+                        <div class="casino-game-desc">Beat the dealer, 2x payout!</div>
                         <div class="casino-game-price">150 pts</div>
                     </div>
                 </div>
@@ -341,6 +361,56 @@
                     </div>
                 </div>
 
+                <!-- Slots Game View -->
+                <div class="casino-game-view" id="slotsGame" style="display: none;">
+                    <button class="casino-back-btn" onclick="backToCasinoMenu()">← Back to Games</button>
+                    
+                    <div class="gambling-game">
+                        <h3>🎰 Slot Machine</h3>
+                        <p style="color: #666; margin-bottom: 15px;">1 point per spin. Match 3 for jackpot (77.7 pts)!</p>
+                        
+                        <div class="slots-machine">
+                            <div class="slots-reels">
+                                <div class="slot-reel" id="slotReel1">
+                                    <div class="slot-symbol">🍒</div>
+                                </div>
+                                <div class="slot-reel" id="slotReel2">
+                                    <div class="slot-symbol">🍒</div>
+                                </div>
+                                <div class="slot-reel" id="slotReel3">
+                                    <div class="slot-symbol">🍒</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="slots-info">
+                            <div class="slots-cost">Cost: <strong>1 pt</strong> per spin</div>
+                            <div class="slots-jackpot">Jackpot: <strong>77.7 pts</strong></div>
+                            <div class="slots-icons">Icons: <span id="slotsIconCount">6</span></div>
+                        </div>
+                        
+                        <div class="gambling-result" id="slotsResult"></div>
+                        
+                        <div class="slots-buttons">
+                            <button onclick="spinSlots()" class="success" id="spinBtn" style="font-size: 1.2em; padding: 15px 40px;">
+                                🎰 SPIN (1 pt)
+                            </button>
+                        </div>
+                        
+                        <div class="slots-upgrade-section">
+                            <h4>⬆️ Upgrade Machine</h4>
+                            <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">Remove an icon to increase your odds!</p>
+                            <div class="slots-upgrade-info">
+                                <span>Current Level: <strong id="slotsLevel">0</strong>/3</span>
+                                <span>Icons Remaining: <strong id="slotsIconsRemaining">6</strong></span>
+                            </div>
+                            <button onclick="upgradeSlots()" class="warning" id="upgradeBtn" style="margin-top: 10px;">
+                                ⬆️ Upgrade (<span id="upgradePrice">50</span> pts)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Higher/Lower Game View -->
                 <div class="casino-game-view" id="higherlowerGame" style="display: none;">
                     <button class="casino-back-btn" onclick="backToCasinoMenu()">← Back to Games</button>
@@ -375,6 +445,57 @@
                             <button onclick="guessHigherLower('lower')" class="info" id="lowerBtn">
                                 ⬇️ Lower
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Blackjack Game View -->
+                <div class="casino-game-view" id="blackjackGame" style="display: none;">
+                    <button class="casino-back-btn" onclick="backToCasinoMenu()">← Back to Games</button>
+                    
+                    <div class="gambling-game">
+                        <h3>🃏 Blackjack</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Get closer to 21 than the dealer without busting! Win = 2x your bet!</p>
+                        
+                        <div class="blackjack-table">
+                            <div class="bj-dealer-area">
+                                <div class="bj-label">Dealer <span id="bjDealerTotal"></span></div>
+                                <div class="bj-cards" id="bjDealerCards"></div>
+                            </div>
+                            <div class="bj-divider"></div>
+                            <div class="bj-player-area">
+                                <div class="bj-label">You <span id="bjPlayerTotal"></span></div>
+                                <div class="bj-cards" id="bjPlayerCards"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="gambling-result" id="bjResult"></div>
+                        
+                        <div class="bet-section" id="bjBetSection">
+                            <label for="bjBetAmount">Bet Amount:</label>
+                            <input type="number" id="bjBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setMaxBet('bjBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
+                        </div>
+                        
+                        <div class="gambling-buttons" id="bjStartButtons">
+                            <button onclick="startBlackjack()" class="success" id="bjDealBtn" style="font-size: 1.2em; padding: 15px 40px;">
+                                🃏 Deal Cards
+                            </button>
+                        </div>
+                        
+                        <div class="gambling-buttons" id="bjGameButtons" style="display: none;">
+                            <button onclick="blackjackHit()" class="success" id="bjHitBtn">
+                                🃏 Hit
+                            </button>
+                            <button onclick="blackjackStand()" class="info" id="bjStandBtn">
+                                ✋ Stand
+                            </button>
+                        </div>
+                        
+                        <div class="bj-ace-choice" id="bjAceChoice" style="display: none;">
+                            <p>You drew an Ace! Choose its value:</p>
+                            <button onclick="chooseAceValue(1)" class="secondary">1</button>
+                            <button onclick="chooseAceValue(11)" class="warning">11</button>
                         </div>
                     </div>
                 </div>
@@ -419,7 +540,7 @@
                 </div>
 
                 <div class="modal-buttons">
-                    <button onclick="resetStats()" style="background: linear-gradient(135deg, #f44336 0%, #e53935 100%);">Reset Stats</button>
+                    <button onclick="resetStats()" style="background: linear-gradient(135deg, #f44336 0%, #e53935 100%);">Reset Data</button>
                     <button onclick="closeStats()">Close</button>
                 </div>
             </div>

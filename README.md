@@ -7,12 +7,15 @@ https://arpan-shah-102.github.io/ai-number-battle
 
 ## ✨ What's New
 
-- **🎰 Expanded Casino System** - Now featuring 4 games: Coin Flip (15 pts), Slots (35 pts - coming soon), Higher/Lower (70 pts, 3x payout!), and Blackjack (150 pts - coming soon)
+- **🤖 AI vs AI Mode** - New restriction (200 pts, 0.5x multiplier): Watch two AIs battle it out! Pick which AI difficulty you want to control
+- **🃏 Blackjack Casino Game** - Now fully playable! Win up to 2.5x your bet with natural blackjacks
+- **🎰 Expanded Casino System** - Now featuring 4 games: Coin Flip (15 pts), Slots (35 pts - coming soon), Higher/Lower (70 pts, 3x payout!), and Blackjack (150 pts)
 - **💰 Unlock System** - Games show a green glow when you can afford to unlock them
 - **🎯 Higher/Lower Game** - Guess if the hidden number is higher or lower for 3x payout
 - **📊 Multiplier Dropdown** - Click the multiplier display to see a breakdown of all active bonuses
-- Added 4 new Game Modes: Testing Time, Ludicrously Lucky, Fog of War, Territorial
-- Added 3 new Restrictions: Single Path, Scummy Sequences, Glorious Zeros
+- Added 4 new Game Modes: Time Trials, Ludicrously Lucky, Fog of War, Territorial
+- Added 4 new Restrictions: Single Path, Scummy Sequences, Glorious Zeros, AI vs AI
+- No Bonus is now a restriction instead of a game mode
 - UX improvement: Shop now includes quick "⚙️ Go to Settings" buttons that jump to the relevant Settings section
 
 ## 🎮 How to Play
@@ -41,7 +44,6 @@ Notes on new scoring and modes:
 | Mode | Multiplier | Description |
 |------|------------|-------------|
 | **Classic** | 1.0x | Standard gameplay |
-| **No Bonus** | 1.1x | No end-game cell bonuses |
 | **Survival** | 1.25x | Progressive difficulty |
 | **Blitz** | 2.5x | Race against the clock! AI moves automatically |
 | **Sudden Death** | 3.0x | First player to score wins! |
@@ -49,7 +51,7 @@ Notes on new scoring and modes:
 | **Reverse Rules** | 5.0x | Everything is backwards - lower scores win! |
 | **Mirror Match** | 1.5x | You and AI get the same cards |
 | **Subtraction** | 1.5x | Numbers subtract instead of add |
-| **Testing Time** | 1.5x | 10 second turns; time decreases by 0.1s each turn (67 pts) |
+| **Time Trials** | 1.5x | 10 second turns; time decreases by 0.1s each turn (67 pts) |
 | **Ludicrously Lucky** | 3.0x | Game may end randomly after turn 3 (80 pts) |
 | **Fog of War** | 1.75x | Only revealed cells (placed by you or adjacent) are visible (100 pts) |
 | **Territorial** | 2.0x | Final score = number of tiles you own (bonus points don't apply) (125 pts) |
@@ -66,6 +68,7 @@ Purchase restrictions from the shop to enable optional handicaps for bonus multi
 | **Single Path** | 30 pts | 1.4x | Game grid is a single winding path; blocking/territory becomes strategic |
 | **Scummy Sequences** | 40 pts | 1.6x | Only sequence scoring is allowed; matches/add-to-ten give no points |
 | **Glorious Zeros** | 50 pts | 0.9x | 0+0 matches are worth 10 points instead of 1 |
+| **AI vs AI** | 200 pts | 0.5x | Watch two AIs battle! Pick your AI difficulty to root for |
 
 > Multipliers stack! Combine restrictions with game modes for maximum earnings.
 
@@ -113,7 +116,7 @@ Click the **🎲 dice icons** in the game title to open the Casino! Gamble your 
 | 🪙 **Coin Flip** | 15 pts | 2x | 50/50 chance - choose heads or tails! |
 | 🎰 **Slots** | 35 pts | ??? | Coming Soon! |
 | 🎯 **Higher/Lower** | 70 pts | 3x | Guess if hidden number is higher or lower |
-| 🃏 **Blackjack** | 150 pts | ??? | Coming Soon! |
+| 🃏 **Blackjack** | 150 pts | 2.5x | Beat the dealer! Get closer to 21 without busting |
 
 > Games are displayed in price order. Unlockable games show a **green glow** when you can afford them!
 
@@ -130,6 +133,15 @@ Click the **🎲 dice icons** in the game title to open the Casino! Gamble your 
 - Guess if the hidden number is **higher** or **lower**
 - Win = **3x your bet** returned
 - The numbers are never the same!
+
+### Blackjack
+- Classic 21 card game against the dealer
+- Face cards are worth 10, Aces are worth 1 or 11 (you choose!)
+- **Hit** to take another card, **Stand** to keep your hand
+- Beat the dealer without going over 21
+- Natural Blackjack (Ace + 10/face) = **2.5x your bet**!
+- Regular win = **2x your bet** returned
+- Ties return your bet
 
 > **Tip:** Use the "Max" button to bet all your points at once!
 

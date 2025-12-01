@@ -70,10 +70,66 @@ const SoundEffects = {
         this.playTone(800, 0.1, 'sine', 0.3);
         setTimeout(() => this.playTone(1000, 0.1, 'sine', 0.3), 100);
         setTimeout(() => this.playTone(1200, 0.2, 'sine', 0.3), 200);
+    },
+    
+    // Casino sound effects
+    playCoinFlip() {
+        // Metallic spinning sound
+        for (let i = 0; i < 8; i++) {
+            setTimeout(() => this.playTone(800 + (i % 2) * 200, 0.08, 'triangle', 0.2), i * 100);
+        }
+    },
+    
+    playSlotSpin() {
+        // Rapid ticking sound for slot spinning
+        for (let i = 0; i < 10; i++) {
+            setTimeout(() => this.playTone(300 + Math.random() * 200, 0.05, 'square', 0.15), i * 50);
+        }
+    },
+    
+    playSlotStop() {
+        // Thunk sound when a reel stops
+        this.playTone(200, 0.15, 'square', 0.3);
+        this.playTone(150, 0.1, 'sine', 0.2);
+    },
+    
+    playJackpot() {
+        // Exciting jackpot fanfare
+        const notes = [523, 659, 784, 1047, 1319, 1568];
+        notes.forEach((freq, i) => {
+            setTimeout(() => this.playTone(freq, 0.2, 'sine', 0.35), i * 100);
+        });
+        setTimeout(() => {
+            this.playTone(1047, 0.5, 'sine', 0.4);
+            this.playTone(1319, 0.5, 'sine', 0.3);
+            this.playTone(1568, 0.5, 'sine', 0.25);
+        }, 650);
+    },
+    
+    playCasinoWin() {
+        // Quick celebratory sound for casino wins
+        this.playTone(700, 0.1, 'sine', 0.3);
+        setTimeout(() => this.playTone(880, 0.1, 'sine', 0.3), 80);
+        setTimeout(() => this.playTone(1100, 0.15, 'sine', 0.35), 160);
+    },
+    
+    playCasinoLose() {
+        // Sad womp womp
+        this.playTone(300, 0.2, 'sine', 0.25);
+        setTimeout(() => this.playTone(250, 0.3, 'sine', 0.25), 200);
+    },
+    
+    playBetPlace() {
+        // Chip/coin sound
+        this.playTone(1200, 0.05, 'triangle', 0.2);
+        setTimeout(() => this.playTone(1400, 0.05, 'triangle', 0.15), 50);
     }
 };
 
 SoundEffects.init();
+
+// Load slots upgrade state on page load
+loadSlotsState();
 
 const IconPacks = {
     default: (num) => num.toString(),
@@ -112,6 +168,13 @@ function startTutorial() {
             <li><strong>Claim Cells:</strong> When you score, you claim those cells (green for you, red for AI)</li>
             <li><strong>End Bonus:</strong> Get +1 point for each cell you own when the game ends</li>
         </ul>
+        
+        <h3>🎰 Casino:</h3>
+        <p style="line-height: 1.8; margin-bottom: 20px;">
+            Click the <strong>🎲 dice icons</strong> in the game title to open the Casino! 
+            Gamble your shop points on games like Coin Flip, Slots, Higher/Lower, and Blackjack. 
+            Win big or lose it all - it's all part of the fun!
+        </p>
         
         <h3>🎮 Interactive Demo:</h3>
         <p style="margin-bottom: 15px;">Click the button below to start an interactive demonstration!</p>
@@ -712,9 +775,10 @@ class NumberConnectionGame {
         this.blitzInterval = null;
         this.blitzActive = false;
         
-        // Testing Time mode properties
-        this.testingTimeRemaining = 10.0;
-        this.testingTimeInterval = null;
+        // Time Trials mode properties
+        this.timeTrialsRemaining = 10.0;
+        this.timeTrialsInterval = null;
+        this.timeTrialsTurnCount = 0; // Track turn count to skip first turn
         
         // Fog of War mode properties
         this.visibleCells = new Set();
@@ -786,7 +850,7 @@ class NumberConnectionGame {
             reverserules: 5.0,
             mirrormatch: 1.5,
             subtraction: 1.5,
-            testingtime: 1.5,
+            timetrials: 1.5,
             ludicrouslylucky: 3.0,
             fogofwar: 1.75,
             territorial: 2.0
@@ -812,8 +876,12 @@ class NumberConnectionGame {
             maintainedPaths: 0.8,   // Full grid connections = 0.8x pts
             singlePath: 1.4,        // Single winding path = 1.4x pts
             scummySequences: 1.6,   // Only sequences score = 1.6x pts
-            gloriousZeros: 0.9      // Zero pairs give 10 pts = 0.9x pts
+            gloriousZeros: 0.9,     // Zero pairs give 10 pts = 0.9x pts
+            aiVsAi: 0               // Will be calculated based on player AI difficulty
         };
+        
+        // AI vs AI player AI difficulty (for when player is also AI)
+        this.playerAiDifficulty = this.loadPlayerAiDifficulty();
 
         this.applyTheme(this.currentTheme);
         this.applyIconPack(this.currentIconPack);
@@ -834,6 +902,31 @@ class NumberConnectionGame {
 
     saveDifficulty() {
         localStorage.setItem('aiDifficulty', this.aiDifficulty.toString());
+    }
+    
+    loadPlayerAiDifficulty() {
+        const saved = localStorage.getItem('playerAiDifficulty');
+        return saved ? parseFloat(saved) : 0.2; // Default to Novice
+    }
+    
+    savePlayerAiDifficulty() {
+        localStorage.setItem('playerAiDifficulty', this.playerAiDifficulty.toString());
+    }
+    
+    getPlayerAiMultiplier() {
+        // Returns multiplier based on player AI difficulty
+        // Novice = 2x, Beginner = 1.5x, Intermediate = 1x, Skilled = 0.5x, rest = 0x
+        const multipliers = {
+            0.2: 2.0,   // Novice
+            0.3: 1.5,   // Beginner
+            0.4: 1.0,   // Intermediate
+            0.5: 0.5,   // Skilled
+            0.6: 0,     // Advanced
+            0.7: 0,     // Expert
+            0.8: 0,     // Pro
+            0.9: 0      // Master
+        };
+        return multipliers[this.playerAiDifficulty] || 0;
     }
 
     loadTheme() {
@@ -886,7 +979,8 @@ class NumberConnectionGame {
                     maintainedPaths: parsed.maintainedPaths || false,
                     singlePath: parsed.singlePath || false,
                     scummySequences: parsed.scummySequences || false,
-                    gloriousZeros: parsed.gloriousZeros || false
+                    gloriousZeros: parsed.gloriousZeros || false,
+                    aiVsAi: parsed.aiVsAi || false
                 };
             } catch (e) {
                 console.warn('Corrupted restrictions, resetting...');
@@ -899,7 +993,8 @@ class NumberConnectionGame {
             maintainedPaths: false,
             singlePath: false,
             scummySequences: false,
-            gloriousZeros: false
+            gloriousZeros: false,
+            aiVsAi: false
         };
     }
 
@@ -917,10 +1012,25 @@ class NumberConnectionGame {
             return;
         }
         
+        // Prevent conflicting path restrictions
+        if (enabled) {
+            if (restriction === 'maintainedPaths' && this.restrictions.singlePath) {
+                this.showMessage(`Can't enable Maintained Paths while Single Path is active!`);
+                this.updateRestrictionsUI();
+                return;
+            }
+            if (restriction === 'singlePath' && this.restrictions.maintainedPaths) {
+                this.showMessage(`Can't enable Single Path while Maintained Paths is active!`);
+                this.updateRestrictionsUI();
+                return;
+            }
+        }
+        
         this.restrictions[restriction] = enabled;
         this.saveRestrictions();
         this.updateMultiplierDisplay();
         this.updateRestrictionsUI();
+        this.updateSettingsUI(); // Update settings to show/hide AI vs AI controls
         
         // Show message about the restriction
         if (enabled) {
@@ -930,7 +1040,8 @@ class NumberConnectionGame {
                 maintainedPaths: 'Maintained Paths',
                 singlePath: 'Single Path',
                 scummySequences: 'Scummy Sequences',
-                gloriousZeros: 'Glorious Zeros'
+                gloriousZeros: 'Glorious Zeros',
+                aiVsAi: 'AI vs AI'
             };
             const multipliers = {
                 noBonus: '1.2x',
@@ -938,10 +1049,18 @@ class NumberConnectionGame {
                 maintainedPaths: '0.8x',
                 singlePath: '1.4x',
                 scummySequences: '1.6x',
-                gloriousZeros: '0.9x'
+                gloriousZeros: '0.9x',
+                aiVsAi: `${this.getPlayerAiMultiplier()}x`
             };
-            this.showMessage(`${names[restriction]} restriction enabled! (${multipliers[restriction]} pts)`);
+            this.showMessage(`${names[restriction]} restriction enabled! (${multipliers[restriction]} pts) Starting new game...`);
+        } else {
+            this.showMessage(`Restriction disabled! Starting new game...`);
         }
+        
+        // Reset the game when restrictions change (like game modes and board sizes)
+        setTimeout(() => {
+            this.newGame();
+        }, 500);
     }
 
     updateRestrictionsUI() {
@@ -951,6 +1070,7 @@ class NumberConnectionGame {
         const singlePathCheck = document.getElementById('restrictionSinglePath');
         const scummySequencesCheck = document.getElementById('restrictionScummySequences');
         const gloriousZerosCheck = document.getElementById('restrictionGloriousZeros');
+        const aiVsAiCheck = document.getElementById('restrictionAiVsAi');
         const restrictionsSection = document.getElementById('restrictionsSettingsSection');
         
         const ownedRestrictions = this.shop.owned.restrictions || [];
@@ -962,6 +1082,7 @@ class NumberConnectionGame {
         if (singlePathCheck) singlePathCheck.checked = this.restrictions.singlePath;
         if (scummySequencesCheck) scummySequencesCheck.checked = this.restrictions.scummySequences;
         if (gloriousZerosCheck) gloriousZerosCheck.checked = this.restrictions.gloriousZeros;
+        if (aiVsAiCheck) aiVsAiCheck.checked = this.restrictions.aiVsAi;
         
         // Show/hide individual restriction options based on ownership
         const noBonusOption = noBonusCheck ? noBonusCheck.closest('.restriction-option') : null;
@@ -970,6 +1091,7 @@ class NumberConnectionGame {
         const singlePathOption = singlePathCheck ? singlePathCheck.closest('.restriction-option') : null;
         const scummySequencesOption = scummySequencesCheck ? scummySequencesCheck.closest('.restriction-option') : null;
         const gloriousZerosOption = gloriousZerosCheck ? gloriousZerosCheck.closest('.restriction-option') : null;
+        const aiVsAiOption = aiVsAiCheck ? aiVsAiCheck.closest('.restriction-option') : null;
         
         if (noBonusOption) noBonusOption.style.display = ownedRestrictions.includes('noBonus') ? 'flex' : 'none';
         if (aiFirstOption) aiFirstOption.style.display = ownedRestrictions.includes('aiFirst') ? 'flex' : 'none';
@@ -977,6 +1099,13 @@ class NumberConnectionGame {
         if (singlePathOption) singlePathOption.style.display = ownedRestrictions.includes('singlePath') ? 'flex' : 'none';
         if (scummySequencesOption) scummySequencesOption.style.display = ownedRestrictions.includes('scummySequences') ? 'flex' : 'none';
         if (gloriousZerosOption) gloriousZerosOption.style.display = ownedRestrictions.includes('gloriousZeros') ? 'flex' : 'none';
+        if (aiVsAiOption) aiVsAiOption.style.display = ownedRestrictions.includes('aiVsAi') ? 'flex' : 'none';
+        
+        // Show/hide Player AI Difficulty dropdown based on AI vs AI restriction
+        const playerAiSection = document.getElementById('playerAiDifficultySection');
+        if (playerAiSection) {
+            playerAiSection.style.display = this.restrictions.aiVsAi ? 'block' : 'none';
+        }
         
         // Show/hide restrictions section based on whether any are owned
         if (restrictionsSection) {
@@ -1028,7 +1157,7 @@ class NumberConnectionGame {
                 if (!shopData.owned) {
                     shopData.owned = {
                         boards: ['4', '5', '6'],
-                        modes: ['classic', 'nobonus', 'survival'],
+                        modes: ['classic', 'survival'],
                         themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
                         icons: ['default'],
                         aiLevels: ['0.4', '0.5', '0.6']
@@ -1215,6 +1344,7 @@ class NumberConnectionGame {
         document.getElementById('lossesCount').textContent = this.stats.losses;
         document.getElementById('tiesCount').textContent = this.stats.ties;
         document.getElementById('highScore').textContent = this.stats.highScore;
+        // Ensure shop points are displayed accurately from the shop object
         document.getElementById('shopPointsStat').textContent = this.shop.points.toFixed(1);
         
         const totalGames = this.stats.wins + this.stats.losses + this.stats.ties;
@@ -1260,7 +1390,6 @@ class NumberConnectionGame {
             modeSelect.innerHTML = '';
             const modes = [
                 { value: 'classic', label: 'Classic', multiplier: 1.0 },
-                { value: 'nobonus', label: 'No Bonus', multiplier: 1.1 },
                 { value: 'survival', label: 'Survival', multiplier: 1.25 },
                 { value: 'blitz', label: 'Blitz', multiplier: 2.5 },
                 { value: 'suddendeath', label: 'Sudden Death', multiplier: 3.0 },
@@ -1268,7 +1397,7 @@ class NumberConnectionGame {
                 { value: 'reverserules', label: 'Reverse Rules', multiplier: 5.0 },
                 { value: 'mirrormatch', label: 'Mirror Match', multiplier: 1.5 },
                 { value: 'subtraction', label: 'Subtraction', multiplier: 1.5 },
-                { value: 'testingtime', label: 'Testing Time', multiplier: 1.5 },
+                { value: 'timetrials', label: 'Time Trials', multiplier: 1.5 },
                 { value: 'ludicrouslylucky', label: 'Ludicrously Lucky', multiplier: 3.0 },
                 { value: 'fogofwar', label: 'Fog of War', multiplier: 1.75 },
                 { value: 'territorial', label: 'Territorial', multiplier: 2.0 }
@@ -1379,6 +1508,12 @@ class NumberConnectionGame {
         
         // Update restrictions checkboxes
         this.updateRestrictionsUI();
+        
+        // Update player AI difficulty dropdown value
+        const playerAiSelect = document.getElementById('playerAiDifficultySelect');
+        if (playerAiSelect) {
+            playerAiSelect.value = this.playerAiDifficulty.toString();
+        }
     }
 
     updateDifficultyDropdown() {
@@ -1455,6 +1590,37 @@ class NumberConnectionGame {
         this.aiDifficulty = parseFloat(value);
         this.saveDifficulty();
         this.updateMultiplierDisplay();
+        
+        // Reset the game when AI difficulty changes
+        this.showMessage(`AI difficulty changed! Starting new game...`);
+        setTimeout(() => {
+            this.newGame();
+        }, 500);
+    }
+    
+    changePlayerAiDifficulty(value) {
+        SoundEffects.playButton();
+        this.playerAiDifficulty = value;
+        this.savePlayerAiDifficulty();
+        this.updateMultiplierDisplay();
+        this.showMessage(`Your AI difficulty changed to ${this.getPlayerAiDifficultyName()}! (${this.getPlayerAiMultiplier()}x pts)`);
+        setTimeout(() => {
+            this.newGame();
+        }, 500);
+    }
+    
+    getPlayerAiDifficultyName() {
+        const names = {
+            0.2: 'Novice',
+            0.3: 'Beginner',
+            0.4: 'Intermediate',
+            0.5: 'Skilled',
+            0.6: 'Advanced',
+            0.7: 'Expert',
+            0.8: 'Pro',
+            0.9: 'Master'
+        };
+        return names[this.playerAiDifficulty] || 'Unknown';
     }
 
     changeBoardSize(value) {
@@ -1814,8 +1980,8 @@ class NumberConnectionGame {
             this.showMessage('MIRROR MATCH: You and AI have the same cards! 🪞');
         } else if (this.gameMode === 'subtraction') {
             this.showMessage('SUBTRACTION: Claiming tiles subtracts opponent points! ➖');
-        } else if (this.gameMode === 'testingtime') {
-            this.showMessage('TESTING TIME: 10 second turns, decreasing by 0.1s each turn! ⏱️');
+        } else if (this.gameMode === 'timetrials') {
+            this.showMessage('TIME TRIALS: 10 second turns, decreasing by 0.1s each turn! ⏱️');
         } else if (this.gameMode === 'ludicrouslylucky') {
             this.showMessage('LUDICROUSLY LUCKY: Game could end any turn after turn 3! 🎲');
         } else if (this.gameMode === 'fogofwar') {
@@ -1838,10 +2004,11 @@ class NumberConnectionGame {
             }, 1500);
         }
         
-        // Initialize Testing Time timer if needed
-        if (this.gameMode === 'testingtime') {
-            this.testingTimeRemaining = 10.0;
-            this.testingTimeInterval = null;
+        // Initialize Time Trials timer if needed
+        if (this.gameMode === 'timetrials') {
+            this.timeTrialsRemaining = 10.0;
+            this.timeTrialsInterval = null;
+            this.timeTrialsTurnCount = 0;
         }
         
         // Initialize Fog of War visibility
@@ -2165,6 +2332,11 @@ class NumberConnectionGame {
             // Backtrack if no unvisited neighbors
             if (!foundNext) {
                 stack.pop();
+                // Also remove the cell from path and visited so it can be revisited from a different direction
+                if (path.length > 1) {
+                    const removed = path.pop();
+                    visited.delete(removed);
+                }
             }
         }
         
@@ -2184,13 +2356,25 @@ class NumberConnectionGame {
             }
         }
         
-        // Create connections along the path
+        // Create connections along the path - only between orthogonally adjacent cells
         for (let i = 0; i < path.length - 1; i++) {
             const from = path[i];
             const to = path[i + 1];
-            this.connections.push({ from, to });
-            adjacencyList.get(from).push(to);
-            adjacencyList.get(to).push(from);
+            
+            // Verify these cells are actually orthogonally adjacent (not diagonal)
+            const fromRow = Math.floor(from / this.gridSize);
+            const fromCol = from % this.gridSize;
+            const toRow = Math.floor(to / this.gridSize);
+            const toCol = to % this.gridSize;
+            const rowDiff = Math.abs(fromRow - toRow);
+            const colDiff = Math.abs(fromCol - toCol);
+            
+            // Only add connection if cells are orthogonally adjacent (not diagonal)
+            if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
+                this.connections.push({ from, to });
+                adjacencyList.get(from).push(to);
+                adjacencyList.get(to).push(from);
+            }
         }
     }
     
@@ -2313,9 +2497,21 @@ class NumberConnectionGame {
         document.getElementById('playerHandArea').classList.remove('disabled');
         this.updatePowerupDisplay();
         
-        // Testing Time mode: Start the countdown timer
-        if (this.gameMode === 'testingtime' && !this.gameEnded) {
-            this.startTestingTimeTimer();
+        // AI vs AI mode: Player's turn is handled by AI
+        if (this.restrictions.aiVsAi && !this.gameEnded && this.currentPlayerCard !== null) {
+            this.disablePlayerInput();
+            setTimeout(() => {
+                this.playerAiTurn();
+            }, 800);
+            return;
+        }
+        
+        // Time Trials mode: Start the countdown timer (skip first turn)
+        if (this.gameMode === 'timetrials' && !this.gameEnded) {
+            this.timeTrialsTurnCount++;
+            if (this.timeTrialsTurnCount > 1) {
+                this.startTimeTrialsTimer();
+            }
         }
     }
 
@@ -2323,39 +2519,45 @@ class NumberConnectionGame {
         document.getElementById('playerHandArea').classList.add('disabled');
         this.updatePowerupDisplay();
         
-        // Testing Time mode: Stop and reset timer
-        if (this.gameMode === 'testingtime') {
-            this.stopTestingTimeTimer();
+        // Time Trials mode: Stop timer (don't decrease time here - do it in stopTimeTrialsTimer)
+        if (this.gameMode === 'timetrials') {
+            this.stopTimeTrialsTimer();
         }
     }
     
-    startTestingTimeTimer() {
+    startTimeTrialsTimer() {
         // Clear any existing timer
-        if (this.testingTimeInterval) {
-            clearInterval(this.testingTimeInterval);
+        if (this.timeTrialsInterval) {
+            clearInterval(this.timeTrialsInterval);
         }
         
-        const timerDisplay = document.getElementById('testingTimeTimer');
+        let timerDisplay = document.getElementById('timeTrialsTimer');
         if (!timerDisplay) {
             // Create timer display if it doesn't exist
             const container = document.getElementById('playerHandArea');
             if (container) {
                 const timer = document.createElement('div');
-                timer.id = 'testingTimeTimer';
+                timer.id = 'timeTrialsTimer';
                 timer.className = 'testing-time-timer';
-                timer.textContent = this.testingTimeRemaining.toFixed(1) + 's';
+                timer.textContent = this.timeTrialsRemaining.toFixed(1) + 's';
                 container.prepend(timer);
+                timerDisplay = timer;
             }
         } else {
-            timerDisplay.textContent = this.testingTimeRemaining.toFixed(1) + 's';
+            timerDisplay.textContent = this.timeTrialsRemaining.toFixed(1) + 's';
             timerDisplay.classList.remove('danger');
         }
         
-        let timeLeft = this.testingTimeRemaining;
+        // Make sure timer is visible
+        if (timerDisplay) {
+            timerDisplay.style.display = 'block';
+        }
         
-        this.testingTimeInterval = setInterval(() => {
+        let timeLeft = this.timeTrialsRemaining;
+        
+        this.timeTrialsInterval = setInterval(() => {
             timeLeft -= 0.1;
-            const display = document.getElementById('testingTimeTimer');
+            const display = document.getElementById('timeTrialsTimer');
             
             if (display) {
                 display.textContent = Math.max(0, timeLeft).toFixed(1) + 's';
@@ -2365,7 +2567,7 @@ class NumberConnectionGame {
             }
             
             if (timeLeft <= 0) {
-                this.stopTestingTimeTimer();
+                this.stopTimeTrialsTimer();
                 // Time ran out - place card randomly or skip turn
                 if (this.currentPlayerCard !== null && !this.gameEnded) {
                     this.showMessage('⏰ Time ran out! Random placement! ⏰');
@@ -2374,7 +2576,7 @@ class NumberConnectionGame {
                         if (cell === null) emptyCells.push(index);
                     });
                     if (emptyCells.length > 0) {
-                        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];  
                         this.playCard(randomCell);
                     }
                 }
@@ -2382,14 +2584,20 @@ class NumberConnectionGame {
         }, 100);
     }
     
-    stopTestingTimeTimer() {
-        if (this.testingTimeInterval) {
-            clearInterval(this.testingTimeInterval);
-            this.testingTimeInterval = null;
+    stopTimeTrialsTimer() {
+        if (this.timeTrialsInterval) {
+            clearInterval(this.timeTrialsInterval);
+            this.timeTrialsInterval = null;
+        }
+        
+        // Hide timer when it's not player's turn (in Time Trials mode)
+        const display = document.getElementById('timeTrialsTimer');
+        if (display && this.gameMode === 'timetrials') {
+            display.style.display = 'none';
         }
         
         // Decrease time for next turn (minimum 2 seconds)
-        this.testingTimeRemaining = Math.max(2.0, this.testingTimeRemaining - 0.1);
+        this.timeTrialsRemaining = Math.max(2.0, this.timeTrialsRemaining - 0.1);
     }
 
     updatePowerupDisplay() {
@@ -2424,7 +2632,7 @@ class NumberConnectionGame {
         const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
         const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
         
-        // Calculate restriction multipliers (all 6 restrictions)
+        // Calculate restriction multipliers (all 7 restrictions)
         let restrictionBonus = 0;
         if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
         if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
@@ -2432,6 +2640,7 @@ class NumberConnectionGame {
         if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
         if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
         if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
+        if (this.restrictions.aiVsAi) restrictionBonus += (this.getPlayerAiMultiplier() - 1.0);
         
         // Add all multipliers together
         const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
@@ -2523,6 +2732,12 @@ class NumberConnectionGame {
             const cls = bonus < 0 ? 'negative' : '';
             const sign = bonus >= 0 ? '+' : '';
             html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 Glorious Zeros</span><span class="multiplier-item-value ${cls}">${sign}${bonus.toFixed(2)}x</span></div>`;
+        }
+        if (this.restrictions.aiVsAi) {
+            const bonus = this.getPlayerAiMultiplier() - 1.0;
+            const cls = bonus < 0 ? 'negative' : '';
+            const sign = bonus >= 0 ? '+' : '';
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 AI vs AI (${this.getPlayerAiDifficultyName()})</span><span class="multiplier-item-value ${cls}">${sign}${bonus.toFixed(2)}x</span></div>`;
         }
         
         // Total
@@ -2780,6 +2995,39 @@ class NumberConnectionGame {
         setTimeout(() => {
             let basePoints = this.calculatePoints(cellIndex, playedCard, 'player');
             
+            // Territorial mode: Don't add points, just update cell ownership count
+            if (this.gameMode === 'territorial') {
+                // In territorial mode, score = number of cells owned
+                const playerCells = this.mapState.filter(cell => cell && cell.owner === 'player').length;
+                this.playerScore = playerCells;
+                this.updateScore('player');
+                
+                if (basePoints > 0) {
+                    this.showMessage(`🏰 Claimed tile! You own ${playerCells} tile${playerCells !== 1 ? 's' : ''}!`);
+                    SoundEffects.playScore();
+                } else {
+                    this.showMessage(`Tile placed. You own ${playerCells} tile${playerCells !== 1 ? 's' : ''}.`);
+                }
+                
+                this.updateMap();
+                
+                if (this.shouldGameEnd()) {
+                    this.endGame();
+                    return;
+                }
+                
+                setTimeout(() => {
+                    if (!this.extraTurn) {
+                        this.aiTurn();
+                    } else {
+                        this.extraTurn = false;
+                        this.enablePlayerInput();
+                        this.showMessage(`Your turn again!`);
+                    }
+                }, 800);
+                return;
+            }
+            
             if (basePoints > 0) {
                 this.playerScore += basePoints;
                 this.updateScore('player');
@@ -2938,6 +3186,33 @@ class NumberConnectionGame {
                 setTimeout(() => {
                     const points = this.calculatePoints(bestMove, aiCard, 'ai');
                     
+                    // Territorial mode: Don't add points, just update cell ownership count
+                    if (this.gameMode === 'territorial') {
+                        const aiCells = this.mapState.filter(cell => cell && cell.owner === 'ai').length;
+                        this.aiScore = aiCells;
+                        this.updateScore('ai');
+                        
+                        if (points > 0) {
+                            this.showMessage(`🤖 AI claimed tile! AI owns ${aiCells} tile${aiCells !== 1 ? 's' : ''}!`);
+                            SoundEffects.playScore();
+                        } else {
+                            this.showMessage(`🤖 AI placed tile. AI owns ${aiCells} tile${aiCells !== 1 ? 's' : ''}.`);
+                        }
+                        
+                        this.updateMap();
+                        
+                        if (this.shouldGameEnd()) {
+                            this.endGame();
+                            return;
+                        }
+                        
+                        setTimeout(() => {
+                            this.enablePlayerInput();
+                            // Note: Don't call drawNextCard here - card was already drawn in playCard()
+                        }, 500);
+                        return;
+                    }
+                    
                     // In Fog of War: reveal cells that AI claimed (changed to red)
                     if (this.gameMode === 'fogofwar' && points > 0) {
                         // Reveal the cell AI played and any cells it converted
@@ -3020,6 +3295,85 @@ class NumberConnectionGame {
         } else {
             this.checkGameEnd();
         }
+    }
+
+    // AI vs AI: Player's AI makes a move
+    playerAiTurn() {
+        if (this.currentPlayerCard === null || this.gameEnded) {
+            this.checkGameEnd();
+            return;
+        }
+        
+        const playerCard = this.currentPlayerCard;
+        
+        // Find best move using player AI difficulty
+        const bestMove = this.findBestPlayerAiMove(playerCard);
+        
+        if (bestMove !== null) {
+            // Show AI is "thinking"
+            this.showMessage('🤖 Your AI is thinking...');
+            
+            setTimeout(() => {
+                // Play the card using the existing playCard logic
+                this.playCard(bestMove);
+            }, 600);
+        } else {
+            this.checkGameEnd();
+        }
+    }
+    
+    findBestPlayerAiMove(playerCard) {
+        const emptyCells = this.mapState
+            .map((cell, index) => cell === null ? index : null)
+            .filter(index => index !== null);
+
+        if (emptyCells.length === 0) return null;
+
+        if (this.gameMode === 'reverserules') {
+            // In reverse rules, lower is better
+            if (Math.random() > this.playerAiDifficulty) {
+                return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            }
+
+            let lowestScore = 1000;
+            let bestCell = null;
+
+            emptyCells.forEach(cellIndex => {
+                const points = this.simulatePoints(cellIndex, playerCard, 'player');
+                if (points < lowestScore) {
+                    lowestScore = points;
+                    bestCell = cellIndex;
+                }
+            });
+
+            if (bestCell === null) {
+                bestCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            }
+
+            return bestCell;
+        }
+
+        // Random chance based on difficulty (lower difficulty = more random)
+        if (Math.random() > this.playerAiDifficulty) {
+            return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        }
+
+        let bestScore = -1;
+        let bestCell = null;
+
+        emptyCells.forEach(cellIndex => {
+            const points = this.simulatePoints(cellIndex, playerCard, 'player');
+            if (points > bestScore) {
+                bestScore = points;
+                bestCell = cellIndex;
+            }
+        });
+
+        if (bestCell === null) {
+            bestCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        }
+
+        return bestCell;
     }
 
     findBestAIMove(aiCard) {
@@ -3465,14 +3819,40 @@ class NumberConnectionGame {
         this.gameEnded = true;
         this.stopBlitzMode();
         
-        // Stop Testing Time timer if running
-        if (this.testingTimeInterval) {
-            clearInterval(this.testingTimeInterval);
-            this.testingTimeInterval = null;
+        // Stop Time Trials timer if running
+        if (this.timeTrialsInterval) {
+            clearInterval(this.timeTrialsInterval);
+            this.timeTrialsInterval = null;
         }
 
         const playerCells = this.mapState.filter(cell => cell && cell.owner === 'player').length;
         const aiCells = this.mapState.filter(cell => cell && cell.owner === 'ai').length;
+        
+        // Determine winner for flash color
+        let playerWon = false;
+        let aiWon = false;
+        if (this.gameMode === 'reverserules') {
+            playerWon = this.playerScore < this.aiScore || (this.gameMode === 'territorial' && playerCells < aiCells);
+            aiWon = this.aiScore < this.playerScore || (this.gameMode === 'territorial' && aiCells < playerCells);
+        } else {
+            playerWon = this.playerScore > this.aiScore || (this.gameMode === 'territorial' && playerCells > aiCells);
+            aiWon = this.aiScore > this.playerScore || (this.gameMode === 'territorial' && aiCells > playerCells);
+        }
+        
+        // Flash the game board color (light version of win/lose/tie)
+        const mapContainer = document.querySelector('.map-container');
+        const originalBg = mapContainer.style.background || '';
+        const flashColor = playerWon ? 'rgba(144, 238, 144, 0.95)' : (aiWon ? 'rgba(255, 182, 182, 0.95)' : 'rgba(255, 224, 178, 0.95)');
+        mapContainer.style.transition = 'background 0.3s ease-in-out';
+        mapContainer.style.background = flashColor;
+        
+        // Fade back to original after delay
+        setTimeout(() => {
+            mapContainer.style.background = originalBg || 'rgba(255,255,255,0.95)';
+            setTimeout(() => {
+                mapContainer.style.transition = '';
+            }, 300);
+        }, 2000);
         
         // Territorial mode: Final scores ARE the owned cell counts
         if (this.gameMode === 'territorial') {
@@ -3551,7 +3931,7 @@ class NumberConnectionGame {
                 const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
                 const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
                 
-                // NEW: Calculate restriction multipliers (all 6)
+                // Calculate restriction multipliers (all 7)
                 let restrictionBonus = 0;
                 if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
                 if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
@@ -3559,6 +3939,7 @@ class NumberConnectionGame {
                 if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
                 if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
                 if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
+                if (this.restrictions.aiVsAi) restrictionBonus += (this.getPlayerAiMultiplier() - 1.0);
                 
                 // Add all multipliers together
                 const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
@@ -3601,7 +3982,7 @@ class NumberConnectionGame {
                     const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
                     const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
                     
-                    // Calculate restriction bonus for display (all 6)
+                    // Calculate restriction bonus for display (all 7)
                     let restrictionBonus = 0;
                     if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
                     if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
@@ -3609,6 +3990,7 @@ class NumberConnectionGame {
                     if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
                     if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
                     if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
+                    if (this.restrictions.aiVsAi) restrictionBonus += (this.getPlayerAiMultiplier() - 1.0);
                     
                     const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
                     
@@ -3719,13 +4101,14 @@ class NumberConnectionGame {
         this.turnCount = 0;
         this.extraTurn = false;
         
-        // Reset Testing Time properties
-        this.testingTimeRemaining = 10.0;
-        if (this.testingTimeInterval) {
-            clearInterval(this.testingTimeInterval);
-            this.testingTimeInterval = null;
+        // Reset Time Trials properties
+        this.timeTrialsRemaining = 10.0;
+        this.timeTrialsTurnCount = 0;
+        if (this.timeTrialsInterval) {
+            clearInterval(this.timeTrialsInterval);
+            this.timeTrialsInterval = null;
         }
-        const timerDisplay = document.getElementById('testingTimeTimer');
+        const timerDisplay = document.getElementById('timeTrialsTimer');
         if (timerDisplay) timerDisplay.remove();
         
         // Reset Fog of War visibility
@@ -3916,7 +4299,7 @@ function renderShopItems() {
         { value: 'reverserules', name: 'Reverse Rules', price: 25, multiplier: 5.0, desc: 'Everything is backwards! Lower scores win, sequences go down.' },
         { value: 'mirrormatch', name: 'Mirror Match', price: 37.5, multiplier: 1.5, desc: 'You and AI get the same cards! Pure strategy, no luck.' },
         { value: 'subtraction', name: 'Subtraction', price: 50, multiplier: 1.5, desc: 'Numbers subtract instead of add! Reach zero to score.' },
-        { value: 'testingtime', name: 'Testing Time', price: 67, multiplier: 1.5, desc: '10 seconds per turn, decreasing by 0.1s each turn! Race the clock.' },
+        { value: 'timetrials', name: 'Time Trials', price: 67, multiplier: 1.5, desc: '10 seconds per turn, decreasing by 0.1s each turn! Race the clock.' },
         { value: 'ludicrouslylucky', name: 'Ludicrously Lucky', price: 80, multiplier: 3.0, desc: 'Game could randomly end any turn after turn 3! High risk, high reward.' },
         { value: 'fogofwar', name: 'Fog of War', price: 100, multiplier: 1.75, desc: 'Only placed cards and adjacent cells are visible. Navigate blind!' },
         { value: 'territorial', name: 'Territorial', price: 125, multiplier: 2.0, desc: 'No points during play - only owned cells count at game end!' }
@@ -4003,7 +4386,8 @@ function renderShopItems() {
             { value: 'maintainedPaths', name: 'Maintained Paths', price: 20, multiplier: 0.8, desc: 'Full grid connections instead of random. More predictable but easier!' },
             { value: 'singlePath', name: 'Single Path', price: 30, multiplier: 1.4, desc: 'Map is a single winding path - strategic blocking becomes crucial!' },
             { value: 'scummySequences', name: 'Scummy Sequences', price: 40, multiplier: 1.6, desc: 'Only sequences score points! Matches and tens give nothing.' },
-            { value: 'gloriousZeros', name: 'Glorious Zeros', price: 50, multiplier: 0.9, desc: 'Zero pairs (0+0) give 10 points instead of 1! Chase those zeros.' }
+            { value: 'gloriousZeros', name: 'Glorious Zeros', price: 50, multiplier: 0.9, desc: 'Zero pairs (0+0) give 10 points instead of 1! Chase those zeros.' },
+            { value: 'aiVsAi', name: 'AI vs AI', price: 200, multiplier: 'variable', desc: 'Watch two AIs battle! Multiplier depends on your AI difficulty.' }
         ];
         
         restrictions.forEach(restriction => {
@@ -4011,9 +4395,12 @@ function renderShopItems() {
             const div = document.createElement('div');
             div.className = owned ? 'shop-item owned' : 'shop-item';
             div.title = restriction.desc;
+            const multiplierText = restriction.multiplier === 'variable' ? 
+                `${game.getPlayerAiMultiplier()}x pts (varies)` : 
+                `${restriction.multiplier}x pts`;
             div.innerHTML = `
                 <div class="shop-item-name">🔒 ${restriction.name}</div>
-                <div class="shop-item-multiplier">${restriction.multiplier}x pts</div>
+                <div class="shop-item-multiplier">${multiplierText}</div>
                 <div class="shop-item-price">${owned ? 'Owned' : restriction.price + ' pts'}</div>
                 <button onclick="buyPermanent('restriction', '${restriction.value}', ${restriction.price})" 
                         ${owned || game.shop.points < restriction.price ? 'disabled' : ''}>
@@ -4441,7 +4828,8 @@ let multiplierClickCount = 0;
 let multiplierClickTimer = null;
 const multiplierTitle = document.querySelector('.multipliers-title');
 if (multiplierTitle) {
-    multiplierTitle.addEventListener('click', () => {
+    multiplierTitle.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent dropdown toggle
         multiplierClickCount++;
         
         // Reset counter after 2 seconds of no clicks
@@ -4475,9 +4863,29 @@ if (multiplierTitle) {
 // ==================== GAMBLING SYSTEM ====================
 let isFlipping = false;
 let isGuessing = false;
+let isSpinning = false;
+let isBlackjackPlaying = false;
 let currentCasinoGame = null;
 let hlHiddenNumber = 0;
 let hlShownNumber = 0;
+
+// Slots game state
+const SLOT_ICONS = ['🍒', '🍋', '🍊', '🍇', '⭐', '💎'];
+let slotsLevel = 0;
+let slotsAvailableIcons = [...SLOT_ICONS];
+const SLOT_UPGRADE_PRICES = [50, 100, 150];
+
+// Blackjack game state
+let bjPlayerCards = [];
+let bjDealerCards = [];
+let bjPlayerTotal = 0;
+let bjDealerTotal = 0;
+let bjCurrentBet = 0;
+let bjPendingAce = null; // Track if player needs to choose ace value
+let bjDealerHiddenCard = null;
+let bjPlayerStood = false; // Track if player has stood
+let bjDealerStood = false; // Track if dealer has stood
+let bjIsPlayerTurn = true; // Track whose turn it is
 
 // Casino game prices
 const casinoGamePrices = {
@@ -4486,6 +4894,20 @@ const casinoGamePrices = {
     higherlower: 70,
     blackjack: 150
 };
+
+// Load slots upgrade level from localStorage
+function loadSlotsState() {
+    const saved = localStorage.getItem('slotsUpgradeLevel');
+    if (saved) {
+        slotsLevel = parseInt(saved) || 0;
+        // Remove icons based on level (remove from end of list)
+        slotsAvailableIcons = SLOT_ICONS.slice(0, SLOT_ICONS.length - slotsLevel);
+    }
+}
+
+function saveSlotsState() {
+    localStorage.setItem('slotsUpgradeLevel', slotsLevel.toString());
+}
 
 // Check which casino games are owned
 function getCasinoOwnedGames() {
@@ -4520,7 +4942,7 @@ function buyCasinoGame(gameId) {
 
 function updateCasinoUI() {
     const games = ['coinflip', 'slots', 'higherlower', 'blackjack']; // Order by price
-    const comingSoon = ['slots', 'blackjack'];
+    const comingSoon = []; // All games are now available!
     
     games.forEach(gameId => {
         const card = document.getElementById(gameId + 'Card');
@@ -4575,6 +4997,7 @@ function updateCasinoUI() {
 }
 
 function openGambling() {
+    SoundEffects.playButton();
     const modal = document.getElementById('gamblingModal');
     modal.classList.add('show');
     document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
@@ -4594,7 +5017,7 @@ function closeGambling() {
 }
 
 function openCasinoGame(gameId) {
-    const comingSoon = ['slots', 'blackjack'];
+    const comingSoon = []; // All games are now available!
     
     if (comingSoon.includes(gameId)) {
         alert('This game is coming soon!');
@@ -4604,7 +5027,7 @@ function openCasinoGame(gameId) {
     if (!isCasinoGameOwned(gameId)) {
         // Trigger buy flow
         if (game.shop.points >= casinoGamePrices[gameId]) {
-            if (confirm(`Buy ${gameId.replace('higherlower', 'Higher/Lower')} for ${casinoGamePrices[gameId]} points?`)) {
+            if (confirm(`Buy ${gameId.replace('higherlower', 'Higher/Lower').replace('coinflip', 'Coin Flip').replace('slots', 'Slots').replace('blackjack', 'Blackjack')} for ${casinoGamePrices[gameId]} points?`)) {
                 if (!buyCasinoGame(gameId)) return;
             } else {
                 return;
@@ -4620,10 +5043,18 @@ function openCasinoGame(gameId) {
     if (gameId === 'coinflip') {
         document.getElementById('coinflipGame').style.display = 'block';
         currentCasinoGame = 'coinflip';
+    } else if (gameId === 'slots') {
+        document.getElementById('slotsGame').style.display = 'block';
+        currentCasinoGame = 'slots';
+        setupSlots();
     } else if (gameId === 'higherlower') {
         document.getElementById('higherlowerGame').style.display = 'block';
         currentCasinoGame = 'higherlower';
         setupHigherLower();
+    } else if (gameId === 'blackjack') {
+        document.getElementById('blackjackGame').style.display = 'block';
+        currentCasinoGame = 'blackjack';
+        setupBlackjack(true); // Auto-start the game
     }
     
     SoundEffects.playButton();
@@ -4636,8 +5067,14 @@ function backToCasinoMenu() {
     const coinflipGame = document.getElementById('coinflipGame');
     if (coinflipGame) coinflipGame.style.display = 'none';
     
+    const slotsGame = document.getElementById('slotsGame');
+    if (slotsGame) slotsGame.style.display = 'none';
+    
     const higherlowerGame = document.getElementById('higherlowerGame');
     if (higherlowerGame) higherlowerGame.style.display = 'none';
+    
+    const blackjackGame = document.getElementById('blackjackGame');
+    if (blackjackGame) blackjackGame.style.display = 'none';
     
     // Reset coin state
     const coin = document.getElementById('gamblingCoin');
@@ -4647,8 +5084,19 @@ function backToCasinoMenu() {
     const hiddenCard = document.getElementById('hlHiddenCard');
     if (hiddenCard) hiddenCard.classList.remove('revealed');
     
+    // Reset slots
+    const reels = document.querySelectorAll('.slot-reel');
+    reels.forEach(reel => {
+        reel.classList.remove('spinning', 'winning');
+    });
+    
+    // Reset blackjack
+    isBlackjackPlaying = false;
+    bjPendingAce = null;
+    
     currentCasinoGame = null;
     isGuessing = false;
+    isSpinning = false;
     
     // Update points display
     document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
@@ -4710,8 +5158,9 @@ function flipCoin(choice) {
     resultDiv.textContent = '';
     resultDiv.className = 'gambling-result';
     
-    // Play sound
-    SoundEffects.playButton();
+    // Play coin flip sound
+    SoundEffects.playCoinFlip();
+    SoundEffects.playBetPlace();
     
     // Show result after animation
     setTimeout(() => {
@@ -4720,12 +5169,12 @@ function flipCoin(choice) {
             game.shop.points += bet; // Net gain is 1x bet (already had the bet, now have 2x)
             resultDiv.textContent = `🎉 ${result.toUpperCase()}! You won ${winnings} points!`;
             resultDiv.className = 'gambling-result win';
-            SoundEffects.playScore();
+            SoundEffects.playCasinoWin();
         } else {
             game.shop.points -= bet;
             resultDiv.textContent = `💔 ${result.toUpperCase()}! You lost ${bet} points!`;
             resultDiv.className = 'gambling-result lose';
-            SoundEffects.playLose();
+            SoundEffects.playCasinoLose();
         }
         
         // Update displays
@@ -4745,6 +5194,183 @@ function flipCoin(choice) {
             betInput.value = currentPoints > 0 ? currentPoints : 1;
         }
     }, 2000);
+}
+
+// ==================== SLOTS GAME ====================
+function setupSlots() {
+    loadSlotsState();
+    updateSlotsUI();
+    
+    // Reset result
+    document.getElementById('slotsResult').textContent = '';
+    document.getElementById('slotsResult').className = 'gambling-result';
+    
+    // Reset reels
+    const reels = document.querySelectorAll('.slot-reel');
+    reels.forEach(reel => {
+        reel.classList.remove('spinning', 'winning');
+    });
+    
+    // Enable spin button if player has points
+    document.getElementById('spinBtn').disabled = game.shop.points < 1;
+}
+
+function updateSlotsUI() {
+    const iconCount = slotsAvailableIcons.length;
+    document.getElementById('slotsIconCount').textContent = iconCount;
+    document.getElementById('slotsLevel').textContent = slotsLevel;
+    document.getElementById('slotsIconsRemaining').textContent = iconCount;
+    
+    // Update upgrade button
+    const upgradeBtn = document.getElementById('upgradeBtn');
+    const upgradePriceSpan = document.getElementById('upgradePrice');
+    
+    if (slotsLevel >= 3) {
+        upgradeBtn.disabled = true;
+        upgradeBtn.textContent = '✅ MAX LEVEL';
+    } else {
+        const nextPrice = SLOT_UPGRADE_PRICES[slotsLevel];
+        upgradePriceSpan.textContent = nextPrice;
+        upgradeBtn.disabled = game.shop.points < nextPrice;
+    }
+    
+    // Update spin button
+    document.getElementById('spinBtn').disabled = game.shop.points < 1 || isSpinning;
+}
+
+function spinSlots() {
+    if (isSpinning) return;
+    if (game.shop.points < 1) {
+        document.getElementById('slotsResult').textContent = '❌ Not enough points! Need 1 pt to spin.';
+        document.getElementById('slotsResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    isSpinning = true;
+    
+    // Deduct cost
+    game.shop.points -= 1;
+    SoundEffects.playBetPlace();
+    
+    // Disable buttons
+    document.getElementById('spinBtn').disabled = true;
+    document.getElementById('upgradeBtn').disabled = true;
+    
+    // Clear previous result
+    document.getElementById('slotsResult').textContent = '';
+    document.getElementById('slotsResult').className = 'gambling-result';
+    
+    // Get reel elements
+    const reel1 = document.getElementById('slotReel1');
+    const reel2 = document.getElementById('slotReel2');
+    const reel3 = document.getElementById('slotReel3');
+    const reels = [reel1, reel2, reel3];
+    
+    // Remove winning class
+    reels.forEach(reel => {
+        reel.classList.remove('winning');
+        reel.classList.add('spinning');
+    });
+    
+    // Play spinning sound
+    SoundEffects.playSlotSpin();
+    
+    // Determine final symbols
+    const results = [];
+    for (let i = 0; i < 3; i++) {
+        const randomIndex = Math.floor(Math.random() * slotsAvailableIcons.length);
+        results.push(slotsAvailableIcons[randomIndex]);
+    }
+    
+    // Animate each reel stopping one by one
+    const stopTimes = [800, 1400, 2000];
+    
+    reels.forEach((reel, i) => {
+        // Rapid symbol changing animation
+        let spinInterval = setInterval(() => {
+            const randomSymbol = slotsAvailableIcons[Math.floor(Math.random() * slotsAvailableIcons.length)];
+            reel.querySelector('.slot-symbol').textContent = randomSymbol;
+        }, 80);
+        
+        setTimeout(() => {
+            clearInterval(spinInterval);
+            reel.classList.remove('spinning');
+            reel.querySelector('.slot-symbol').textContent = results[i];
+            SoundEffects.playSlotStop();
+        }, stopTimes[i]);
+    });
+    
+    // Check result after all reels stop
+    setTimeout(() => {
+        const resultDiv = document.getElementById('slotsResult');
+        const isJackpot = results[0] === results[1] && results[1] === results[2];
+        
+        if (isJackpot) {
+            // JACKPOT! All three match
+            game.shop.points += 77.7;
+            resultDiv.textContent = `🎰 JACKPOT! ${results[0]}${results[1]}${results[2]} - You won 77.7 points!`;
+            resultDiv.className = 'gambling-result win';
+            SoundEffects.playJackpot();
+            
+            // Add winning animation to reels
+            reels.forEach(reel => reel.classList.add('winning'));
+        } else {
+            // No win
+            resultDiv.textContent = `${results[0]}${results[1]}${results[2]} - No match. Try again!`;
+            resultDiv.className = 'gambling-result lose';
+            SoundEffects.playCasinoLose();
+        }
+        
+        // Update displays
+        const currentPoints = game.shop.points;
+        document.getElementById('gamblingPointsDisplay').textContent = currentPoints.toFixed(1);
+        game.saveShop();
+        document.getElementById('shopPointsDisplay').textContent = currentPoints.toFixed(1);
+        document.getElementById('shopPointsStat').textContent = Math.floor(currentPoints);
+        
+        isSpinning = false;
+        updateSlotsUI();
+    }, 2200);
+}
+
+function upgradeSlots() {
+    if (slotsLevel >= 3) {
+        document.getElementById('slotsResult').textContent = '✅ Slot machine is at max level!';
+        return;
+    }
+    
+    const price = SLOT_UPGRADE_PRICES[slotsLevel];
+    
+    if (game.shop.points < price) {
+        document.getElementById('slotsResult').textContent = `❌ Not enough points! Need ${price} pts.`;
+        document.getElementById('slotsResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    // Deduct price
+    game.shop.points -= price;
+    
+    // Upgrade - remove one icon from the available pool
+    slotsLevel++;
+    slotsAvailableIcons = SLOT_ICONS.slice(0, SLOT_ICONS.length - slotsLevel);
+    
+    saveSlotsState();
+    
+    // Show result
+    const removedIcon = SLOT_ICONS[SLOT_ICONS.length - slotsLevel];
+    document.getElementById('slotsResult').textContent = `⬆️ Upgraded to Level ${slotsLevel}! Removed ${removedIcon}. Now ${slotsAvailableIcons.length} icons.`;
+    document.getElementById('slotsResult').className = 'gambling-result win';
+    
+    SoundEffects.playUnlock();
+    
+    // Update displays
+    const currentPoints = game.shop.points;
+    document.getElementById('gamblingPointsDisplay').textContent = currentPoints.toFixed(1);
+    game.saveShop();
+    document.getElementById('shopPointsDisplay').textContent = currentPoints.toFixed(1);
+    document.getElementById('shopPointsStat').textContent = Math.floor(currentPoints);
+    
+    updateSlotsUI();
 }
 
 // ==================== HIGHER/LOWER GAME ====================
@@ -4798,8 +5424,8 @@ function guessHigherLower(guess) {
     document.getElementById('higherBtn').disabled = true;
     document.getElementById('lowerBtn').disabled = true;
     
-    // Play sound
-    SoundEffects.playButton();
+    // Play bet sound
+    SoundEffects.playBetPlace();
     
     // Reveal the hidden number
     document.querySelector('#hlHiddenCard .hl-question').style.display = 'none';
@@ -4814,16 +5440,16 @@ function guessHigherLower(guess) {
     
     setTimeout(() => {
         if (won) {
-            const winnings = bet * 3;
-            game.shop.points += bet * 2; // Net gain is 2x bet (already had bet, now have 3x)
+            const winnings = bet * 1.5;
+            game.shop.points += bet * 0.5; // Net gain is 0.5x bet (already had bet, now have 1.5x)
             resultDiv.textContent = `🎉 Correct! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You won ${winnings} points!`;
             resultDiv.className = 'gambling-result win';
-            SoundEffects.playScore();
+            SoundEffects.playCasinoWin();
         } else {
             game.shop.points -= bet;
             resultDiv.textContent = `💔 Wrong! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You lost ${bet} points!`;
             resultDiv.className = 'gambling-result lose';
-            SoundEffects.playLose();
+            SoundEffects.playCasinoLose();
         }
         
         // Update displays
@@ -4845,10 +5471,428 @@ function guessHigherLower(guess) {
     }, 500);
 }
 
+// ==================== BLACKJACK GAME ====================
+const BJ_CARDS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const BJ_SUITS = ['♠', '♥', '♦', '♣'];
+
+function getCardValue(card, preferHigh = true) {
+    const rank = card.rank;
+    if (rank === 'A') return preferHigh ? 11 : 1;
+    if (['J', 'Q', 'K'].includes(rank)) return 10;
+    return parseInt(rank);
+}
+
+function calculateHandTotal(cards, isDealer = false) {
+    let total = 0;
+    let aces = 0;
+    
+    for (const card of cards) {
+        if (card.rank === 'A') {
+            aces++;
+            total += 11; // Start with 11
+        } else {
+            total += getCardValue(card);
+        }
+    }
+    
+    // For dealer: automatically reduce aces to prevent bust
+    // For player: we handle ace choice separately
+    if (isDealer) {
+        while (total > 21 && aces > 0) {
+            total -= 10; // Change ace from 11 to 1
+            aces--;
+        }
+    }
+    
+    return total;
+}
+
+function drawRandomCard() {
+    const rank = BJ_CARDS[Math.floor(Math.random() * BJ_CARDS.length)];
+    const suit = BJ_SUITS[Math.floor(Math.random() * BJ_SUITS.length)];
+    const isRed = suit === '♥' || suit === '♦';
+    return { rank, suit, isRed };
+}
+
+function renderCard(card, hidden = false) {
+    const div = document.createElement('div');
+    div.className = `bj-card ${hidden ? 'hidden' : (card.isRed ? 'red' : 'black')}`;
+    if (!hidden) {
+        div.textContent = card.rank + card.suit;
+    }
+    return div;
+}
+
+function updateBlackjackDisplay() {
+    const dealerCardsEl = document.getElementById('bjDealerCards');
+    const playerCardsEl = document.getElementById('bjPlayerCards');
+    const dealerTotalEl = document.getElementById('bjDealerTotal');
+    const playerTotalEl = document.getElementById('bjPlayerTotal');
+    
+    // Clear
+    dealerCardsEl.innerHTML = '';
+    playerCardsEl.innerHTML = '';
+    
+    // Render dealer cards
+    bjDealerCards.forEach((card, i) => {
+        if (i === 0 && bjDealerHiddenCard && isBlackjackPlaying) {
+            dealerCardsEl.appendChild(renderCard(card, true));
+        } else {
+            dealerCardsEl.appendChild(renderCard(card));
+        }
+    });
+    
+    // Render player cards
+    bjPlayerCards.forEach(card => {
+        playerCardsEl.appendChild(renderCard(card));
+    });
+    
+    // Update totals
+    bjPlayerTotal = calculateHandTotal(bjPlayerCards);
+    
+    if (bjDealerHiddenCard && isBlackjackPlaying) {
+        // Only show visible card value
+        const visibleCards = bjDealerCards.slice(1);
+        const visibleTotal = calculateHandTotal(visibleCards, true);
+        dealerTotalEl.textContent = `(${visibleTotal}+?)`;
+    } else {
+        bjDealerTotal = calculateHandTotal(bjDealerCards, true);
+        dealerTotalEl.textContent = `(${bjDealerTotal})`;
+    }
+    
+    playerTotalEl.textContent = `(${bjPlayerTotal})`;
+}
+
+function setupBlackjack(autoStart = false) {
+    // Reset state
+    bjPlayerCards = [];
+    bjDealerCards = [];
+    bjPlayerTotal = 0;
+    bjDealerTotal = 0;
+    bjCurrentBet = 0;
+    bjPendingAce = null;
+    bjDealerHiddenCard = null;
+    isBlackjackPlaying = false;
+    
+    // Reset UI
+    document.getElementById('bjResult').textContent = '';
+    document.getElementById('bjResult').className = 'gambling-result';
+    document.getElementById('bjBetSection').style.display = 'block';
+    document.getElementById('bjStartButtons').style.display = 'flex';
+    document.getElementById('bjGameButtons').style.display = 'none';
+    document.getElementById('bjAceChoice').style.display = 'none';
+    document.getElementById('bjDealBtn').disabled = game.shop.points < 1;
+    document.getElementById('bjHitBtn').disabled = false;
+    document.getElementById('bjStandBtn').disabled = false;
+    
+    // Clear cards
+    document.getElementById('bjDealerCards').innerHTML = '';
+    document.getElementById('bjPlayerCards').innerHTML = '';
+    document.getElementById('bjDealerTotal').textContent = '';
+    document.getElementById('bjPlayerTotal').textContent = '';
+    
+    // Auto-start with bet of 1 if opening the game
+    if (autoStart && game.shop.points >= 1) {
+        document.getElementById('bjBetAmount').value = '1';
+        startBlackjack();
+    }
+}
+
+function startBlackjack() {
+    const betInput = document.getElementById('bjBetAmount');
+    const bet = parseInt(betInput.value) || 0;
+    
+    if (bet <= 0) {
+        document.getElementById('bjResult').textContent = '❌ Enter a valid bet amount!';
+        document.getElementById('bjResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    if (bet > game.shop.points) {
+        document.getElementById('bjResult').textContent = '❌ Not enough points!';
+        document.getElementById('bjResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    // Deduct bet
+    bjCurrentBet = bet;
+    game.shop.points -= bet;
+    SoundEffects.playBetPlace();
+    
+    isBlackjackPlaying = true;
+    bjPlayerStood = false;
+    bjDealerStood = false;
+    bjIsPlayerTurn = true;
+    
+    // Hide bet section, show game buttons
+    document.getElementById('bjBetSection').style.display = 'none';
+    document.getElementById('bjStartButtons').style.display = 'none';
+    document.getElementById('bjGameButtons').style.display = 'flex';
+    document.getElementById('bjResult').textContent = '';
+    
+    // Deal initial cards
+    bjPlayerCards = [];
+    bjDealerCards = [];
+    
+    // Deal 2 cards each
+    bjPlayerCards.push(drawRandomCard());
+    bjDealerCards.push(drawRandomCard());
+    bjDealerHiddenCard = bjDealerCards[0]; // First dealer card is hidden
+    bjPlayerCards.push(drawRandomCard());
+    bjDealerCards.push(drawRandomCard());
+    
+    updateBlackjackDisplay();
+    updateBlackjackTurnIndicator();
+    
+    // Update points display
+    document.getElementById('gamblingPointsDisplay').textContent = game.shop.points.toFixed(1);
+    
+    // Check for immediate blackjack (21 with 2 cards)
+    bjPlayerTotal = calculateBestPlayerTotal(bjPlayerCards);
+    if (bjPlayerTotal === 21) {
+        document.getElementById('bjResult').textContent = '🎰 Blackjack! Standing automatically...';
+        setTimeout(() => blackjackStand(), 500);
+    }
+}
+
+function blackjackHit() {
+    if (!isBlackjackPlaying || !bjIsPlayerTurn || bjPlayerStood) return;
+    
+    SoundEffects.playButton();
+    
+    // Draw a card
+    const newCard = drawRandomCard();
+    bjPlayerCards.push(newCard);
+    
+    updateBlackjackDisplay();
+    
+    // Check for bust immediately
+    bjPlayerTotal = calculateBestPlayerTotal(bjPlayerCards);
+    if (bjPlayerTotal > 21) {
+        endBlackjack('bust');
+        return;
+    }
+    
+    // Check if player hit 21 - auto stand
+    if (bjPlayerTotal === 21) {
+        document.getElementById('bjResult').textContent = '🎯 21! Standing automatically...';
+        setTimeout(() => blackjackStand(), 500);
+        return;
+    }
+    
+    // After player hits, it's dealer's turn
+    bjIsPlayerTurn = false;
+    updateBlackjackTurnIndicator();
+    setTimeout(() => dealerTurn(), 800);
+}
+
+function calculateBestPlayerTotal(cards) {
+    let total = 0;
+    let aces = 0;
+    
+    for (const card of cards) {
+        if (card.rank === 'A') {
+            aces++;
+            total += 11;
+        } else {
+            total += getCardValue(card);
+        }
+    }
+    
+    // Reduce aces to 1 if needed to avoid bust
+    while (total > 21 && aces > 0) {
+        total -= 10;
+        aces--;
+    }
+    
+    return total;
+}
+
+function recalculateWithLowAces(cards) {
+    return calculateBestPlayerTotal(cards);
+}
+
+function blackjackStand() {
+    if (!isBlackjackPlaying) return;
+    
+    SoundEffects.playButton();
+    bjPlayerStood = true;
+    
+    // Reveal dealer's hidden card once player stands
+    bjDealerHiddenCard = null;
+    updateBlackjackDisplay();
+    
+    // Disable player buttons since they've stood
+    document.getElementById('bjHitBtn').disabled = true;
+    document.getElementById('bjStandBtn').disabled = true;
+    
+    // Dealer's turn - will keep drawing until done
+    bjIsPlayerTurn = false;
+    updateBlackjackTurnIndicator();
+    dealerTurn();
+}
+
+function dealerTurn() {
+    bjDealerTotal = calculateHandTotal(bjDealerCards, true);
+    updateBlackjackDisplay();
+    
+    // If player hasn't stood yet, dealer just takes one action then passes back
+    if (!bjPlayerStood) {
+        // Dealer decides: hit if under 17, stand otherwise
+        if (bjDealerTotal < 17) {
+            setTimeout(() => {
+                const newCard = drawRandomCard();
+                bjDealerCards.push(newCard);
+                SoundEffects.playButton();
+                bjDealerTotal = calculateHandTotal(bjDealerCards, true);
+                updateBlackjackDisplay();
+                
+                // Check if dealer busted
+                if (bjDealerTotal > 21) {
+                    endBlackjack('dealerBust');
+                    return;
+                }
+                
+                // Pass turn back to player
+                bjIsPlayerTurn = true;
+                updateBlackjackTurnIndicator();
+            }, 800);
+        } else {
+            // Dealer stands for this turn
+            bjDealerStood = true;
+            document.getElementById('bjResult').textContent = '🤖 Dealer stands at ' + bjDealerTotal;
+            
+            // Pass turn back to player
+            setTimeout(() => {
+                bjIsPlayerTurn = true;
+                updateBlackjackTurnIndicator();
+            }, 500);
+        }
+    } else {
+        // Player has stood - dealer plays until finished
+        if (bjDealerTotal < 17) {
+            setTimeout(() => {
+                const newCard = drawRandomCard();
+                bjDealerCards.push(newCard);
+                SoundEffects.playButton();
+                bjDealerTotal = calculateHandTotal(bjDealerCards, true);
+                updateBlackjackDisplay();
+                
+                // Check if dealer busted
+                if (bjDealerTotal > 21) {
+                    endBlackjack('dealerBust');
+                    return;
+                }
+                
+                // Continue drawing
+                dealerTurn();
+            }, 800);
+        } else {
+            // Dealer stops at 17+ - compare hands
+            endBlackjack('compare');
+        }
+    }
+}
+
+function endBlackjack(reason) {
+    isBlackjackPlaying = false;
+    
+    // Disable game buttons
+    document.getElementById('bjHitBtn').disabled = true;
+    document.getElementById('bjStandBtn').disabled = true;
+    
+    const resultDiv = document.getElementById('bjResult');
+    
+    // Final totals
+    bjPlayerTotal = calculateBestPlayerTotal(bjPlayerCards);
+    bjDealerTotal = calculateHandTotal(bjDealerCards, true);
+    
+    // Reveal hidden card if not already
+    bjDealerHiddenCard = null;
+    updateBlackjackDisplay();
+    
+    let won = false;
+    let message = '';
+    
+    if (reason === 'bust') {
+        message = `💔 Bust! You went over 21 (${bjPlayerTotal}). You lost ${bjCurrentBet} points.`;
+        SoundEffects.playCasinoLose();
+    } else if (reason === 'dealerBust') {
+        // Dealer busted - player wins!
+        won = true;
+        message = `🎉 Dealer busts at ${bjDealerTotal}! You win ${bjCurrentBet * 2} points!`;
+    } else { // compare
+        if (bjPlayerTotal > bjDealerTotal) {
+            won = true;
+            message = `🎉 You win! ${bjPlayerTotal} beats dealer's ${bjDealerTotal}. Won ${bjCurrentBet * 2} points!`;
+        } else if (bjPlayerTotal < bjDealerTotal) {
+            message = `💔 Dealer wins! ${bjDealerTotal} beats your ${bjPlayerTotal}. Lost ${bjCurrentBet} points.`;
+            SoundEffects.playCasinoLose();
+        } else {
+            // Push - return bet
+            game.shop.points += bjCurrentBet;
+            message = `🤝 Push! Both have ${bjPlayerTotal}. Bet returned.`;
+            SoundEffects.playButton();
+        }
+    }
+    
+    if (won) {
+        game.shop.points += bjCurrentBet * 2; // Return bet + winnings
+        resultDiv.className = 'gambling-result win';
+        SoundEffects.playCasinoWin();
+    } else if (reason === 'bust' || bjPlayerTotal < bjDealerTotal) {
+        resultDiv.className = 'gambling-result lose';
+    }
+    
+    resultDiv.textContent = message;
+    
+    // Update displays
+    const currentPoints = game.shop.points;
+    document.getElementById('gamblingPointsDisplay').textContent = currentPoints.toFixed(1);
+    game.saveShop();
+    document.getElementById('shopPointsDisplay').textContent = currentPoints.toFixed(1);
+    document.getElementById('shopPointsStat').textContent = currentPoints.toFixed(1);
+    
+    // Reset after delay
+    setTimeout(() => {
+        setupBlackjack();
+    }, 3000);
+}
+
+function updateBlackjackTurnIndicator() {
+    const resultDiv = document.getElementById('bjResult');
+    if (!isBlackjackPlaying) return;
+    
+    if (bjPlayerStood) {
+        resultDiv.textContent = '🤖 Dealer is playing...';
+    } else if (bjIsPlayerTurn) {
+        resultDiv.textContent = '👤 Your turn - Hit or Stand?';
+        document.getElementById('bjHitBtn').disabled = false;
+        document.getElementById('bjStandBtn').disabled = false;
+    } else {
+        resultDiv.textContent = '🤖 Dealer\'s turn...';
+        document.getElementById('bjHitBtn').disabled = true;
+        document.getElementById('bjStandBtn').disabled = true;
+    }
+}
+
+function chooseAceValue(value) {
+    // This function is for manual ace choice if needed
+    // Currently we auto-choose based on bust prevention
+    document.getElementById('bjAceChoice').style.display = 'none';
+}
+
 // ==================== MULTIPLIER DROPDOWN ====================
-function toggleMultiplierDropdown() {
+function toggleMultiplierDropdown(event) {
+    // Prevent toggle if clicking on the title (for easter egg)
+    if (event && event.target && event.target.classList.contains('multipliers-title')) {
+        return;
+    }
+    
     const dropdown = document.getElementById('multipliersDropdown');
     const container = document.getElementById('currentMultipliers');
+    
+    SoundEffects.playButton();
     
     if (dropdown.classList.contains('show')) {
         dropdown.classList.remove('show');
