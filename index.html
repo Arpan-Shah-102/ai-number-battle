@@ -11,7 +11,7 @@
     <body>
         <div class="game-container">
             <header>
-                <h1>🎲 Number Battle 🎲</h1>
+                <h1><span class="dice-clickable" onclick="openGambling()"><span class="dice-glow"></span>🎲</span> Number Battle <span class="dice-clickable" onclick="openGambling()"><span class="dice-glow"></span>🎲</span></h1>
                 <div class="header-controls">
                     <button onclick="toggleRules()" class="info">📜 Show/Hide Rules</button>
                     <button onclick="startTutorial()" class="warning">🎓 Tutorial</button>
@@ -254,6 +254,79 @@
 
                 <div class="modal-buttons">
                     <button onclick="closeSettings()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gambling Modal -->
+        <div class="modal" id="gamblingModal">
+            <div class="modal-content">
+                <h2>🎰 Casino</h2>
+                
+                <div class="shop-points-display">
+                    <div class="points-label">Your Shop Points</div>
+                    <div class="points-value" id="gamblingPointsDisplay">0</div>
+                </div>
+
+                <!-- Game Selection View -->
+                <div class="casino-games-grid" id="casinoGamesGrid">
+                    <div class="casino-game-card" onclick="openCasinoGame('coinflip')">
+                        <div class="casino-game-icon">🪙</div>
+                        <div class="casino-game-name">Coin Flip</div>
+                        <div class="casino-game-desc">50/50 chance, 2x payout!</div>
+                    </div>
+                    <div class="casino-game-card locked">
+                        <div class="casino-game-icon">🎰</div>
+                        <div class="casino-game-name">Slots</div>
+                        <div class="casino-game-desc">Coming Soon!</div>
+                    </div>
+                    <div class="casino-game-card locked">
+                        <div class="casino-game-icon">🎯</div>
+                        <div class="casino-game-name">Higher/Lower</div>
+                        <div class="casino-game-desc">Coming Soon!</div>
+                    </div>
+                </div>
+
+                <!-- Coin Flip Game View -->
+                <div class="casino-game-view" id="coinflipGame" style="display: none;">
+                    <button class="casino-back-btn" onclick="backToCasinoMenu()">← Back to Games</button>
+                    
+                    <div class="gambling-game">
+                        <h3>🪙 Coin Flip</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Bet on heads or tails. Win = 2x your bet!</p>
+                        
+                        <div class="coin-container">
+                            <div class="coin" id="gamblingCoin">
+                                <div class="coin-face coin-heads">
+                                    <img src="./assets/heads.png" alt="Heads">
+                                </div>
+                                <div class="coin-face coin-tails">
+                                    <img src="./assets/tails.png" alt="Tails">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="gambling-result" id="gamblingResult"></div>
+                        
+                        <div class="bet-section">
+                            <label for="betAmount">Bet Amount:</label>
+                            <input type="number" id="betAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setMaxBet()" class="warning" style="padding: 8px 12px;">Max</button>
+                        </div>
+                        
+                        <div class="gambling-buttons">
+                            <button onclick="flipCoin('heads')" class="success" id="headsBtn">
+                                <img src="./assets/heads.png" alt="Heads" style="width: 24px; height: 24px; vertical-align: middle;"> Heads
+                            </button>
+                            <button onclick="flipCoin('tails')" class="info" id="tailsBtn">
+                                <img src="./assets/tails.png" alt="Tails" style="width: 24px; height: 24px; vertical-align: middle;"> Tails
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button onclick="closeGambling()">Close</button>
                 </div>
             </div>
         </div>

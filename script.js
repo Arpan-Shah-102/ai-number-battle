@@ -953,6 +953,9 @@ class NumberConnectionGame {
         const gloriousZerosCheck = document.getElementById('restrictionGloriousZeros');
         const restrictionsSection = document.getElementById('restrictionsSettingsSection');
         
+        const ownedRestrictions = this.shop.owned.restrictions || [];
+        
+        // Set checkbox states
         if (noBonusCheck) noBonusCheck.checked = this.restrictions.noBonus;
         if (aiFirstCheck) aiFirstCheck.checked = this.restrictions.aiFirst;
         if (maintainedPathsCheck) maintainedPathsCheck.checked = this.restrictions.maintainedPaths;
@@ -960,9 +963,24 @@ class NumberConnectionGame {
         if (scummySequencesCheck) scummySequencesCheck.checked = this.restrictions.scummySequences;
         if (gloriousZerosCheck) gloriousZerosCheck.checked = this.restrictions.gloriousZeros;
         
+        // Show/hide individual restriction options based on ownership
+        const noBonusOption = noBonusCheck ? noBonusCheck.closest('.restriction-option') : null;
+        const aiFirstOption = aiFirstCheck ? aiFirstCheck.closest('.restriction-option') : null;
+        const maintainedPathsOption = maintainedPathsCheck ? maintainedPathsCheck.closest('.restriction-option') : null;
+        const singlePathOption = singlePathCheck ? singlePathCheck.closest('.restriction-option') : null;
+        const scummySequencesOption = scummySequencesCheck ? scummySequencesCheck.closest('.restriction-option') : null;
+        const gloriousZerosOption = gloriousZerosCheck ? gloriousZerosCheck.closest('.restriction-option') : null;
+        
+        if (noBonusOption) noBonusOption.style.display = ownedRestrictions.includes('noBonus') ? 'flex' : 'none';
+        if (aiFirstOption) aiFirstOption.style.display = ownedRestrictions.includes('aiFirst') ? 'flex' : 'none';
+        if (maintainedPathsOption) maintainedPathsOption.style.display = ownedRestrictions.includes('maintainedPaths') ? 'flex' : 'none';
+        if (singlePathOption) singlePathOption.style.display = ownedRestrictions.includes('singlePath') ? 'flex' : 'none';
+        if (scummySequencesOption) scummySequencesOption.style.display = ownedRestrictions.includes('scummySequences') ? 'flex' : 'none';
+        if (gloriousZerosOption) gloriousZerosOption.style.display = ownedRestrictions.includes('gloriousZeros') ? 'flex' : 'none';
+        
         // Show/hide restrictions section based on whether any are owned
         if (restrictionsSection) {
-            const hasAnyRestriction = this.shop.owned.restrictions && this.shop.owned.restrictions.length > 0;
+            const hasAnyRestriction = ownedRestrictions.length > 0;
             restrictionsSection.style.display = hasAnyRestriction ? 'block' : 'none';
         }
     }
@@ -1032,7 +1050,12 @@ class NumberConnectionGame {
                         viewNext: 0,
                         undo: 0,
                         pickCard: 0,
-                        doublePoints: 0 // NEW
+                        doublePoints: 0
+                    }
+                } else {
+                    // Ensure doublePoints exists in existing permanentPowerups
+                    if (shopData.owned.permanentPowerups.doublePoints === undefined) {
+                        shopData.owned.permanentPowerups.doublePoints = 0;
                     }
                 }
                 return shopData;
@@ -1244,7 +1267,11 @@ class NumberConnectionGame {
                 { value: 'chainreaction', label: 'Chain Reaction', multiplier: 0.8 },
                 { value: 'reverserules', label: 'Reverse Rules', multiplier: 5.0 },
                 { value: 'mirrormatch', label: 'Mirror Match', multiplier: 1.5 },
-                { value: 'subtraction', label: 'Subtraction', multiplier: 1.5 } // FIXED
+                { value: 'subtraction', label: 'Subtraction', multiplier: 1.5 },
+                { value: 'testingtime', label: 'Testing Time', multiplier: 1.5 },
+                { value: 'ludicrouslylucky', label: 'Ludicrously Lucky', multiplier: 3.0 },
+                { value: 'fogofwar', label: 'Fog of War', multiplier: 1.75 },
+                { value: 'territorial', label: 'Territorial', multiplier: 2.0 }
             ];
             
             modes.forEach(mode => {
@@ -2397,11 +2424,14 @@ class NumberConnectionGame {
         const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
         const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
         
-        // NEW: Calculate restriction multipliers
+        // Calculate restriction multipliers (all 6 restrictions)
         let restrictionBonus = 0;
         if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
         if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
         if (this.restrictions.maintainedPaths) restrictionBonus += (this.restrictionMultipliers.maintainedPaths - 1.0);
+        if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
+        if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
+        if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
         
         // Add all multipliers together
         const totalMultiplier = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
@@ -2808,8 +2838,12 @@ class NumberConnectionGame {
                 const aiRect = aiScoreCard.getBoundingClientRect();
                 const cellRect = targetCell.getBoundingClientRect();
                 
+                // In Fog of War mode, hide the AI's card number
+                const isFogMode = this.gameMode === 'fogofwar';
+                const displayCard = isFogMode ? '?' : aiCard;
+                
                 this.createFloatingCard(
-                    aiCard,
+                    displayCard,
                     aiRect.left + aiRect.width / 2 - 30,
                     aiRect.top + aiRect.height / 2 - 30,
                     cellRect.left + cellRect.width / 2 - 30,
@@ -2830,6 +2864,12 @@ class NumberConnectionGame {
                 setTimeout(() => {
                     const points = this.calculatePoints(bestMove, aiCard, 'ai');
                     
+                    // In Fog of War: reveal cells that AI claimed (changed to red)
+                    if (this.gameMode === 'fogofwar' && points > 0) {
+                        // Reveal the cell AI played and any cells it converted
+                        this.revealCell(bestMove);
+                    }
+                    
                     if (points > 0) {
                         this.aiScore += points;
                         this.updateScore('ai');
@@ -2838,7 +2878,12 @@ class NumberConnectionGame {
                         const rect = scoreCard.getBoundingClientRect();
                         this.createPointsPopup(points, rect.left + rect.width / 2 - 50, rect.top - 50, false);
                         
-                        this.showMessage(`🤖 AI scored ${points} point${points !== 1 ? 's' : ''}!`);
+                        // In Fog of War, hide the exact points from player
+                        if (this.gameMode === 'fogofwar') {
+                            this.showMessage(`🤖 AI scored somewhere in the fog!`);
+                        } else {
+                            this.showMessage(`🤖 AI scored ${points} point${points !== 1 ? 's' : ''}!`);
+                        }
                         SoundEffects.playScore();
                         
                         // FIXED: Force map update before checking sudden death
@@ -2863,7 +2908,11 @@ class NumberConnectionGame {
                             return;
                         }
                     } else {
-                        this.showMessage(`AI played but scored no points.`);
+                        if (this.gameMode === 'fogofwar') {
+                            this.showMessage(`🤖 AI played somewhere in the fog...`);
+                        } else {
+                            this.showMessage(`AI played but scored no points.`);
+                        }
                     }
                     
                     // FIXED: Force update map to apply owner colors
@@ -3259,7 +3308,19 @@ class NumberConnectionGame {
             const isVisible = !isFogMode || this.visibleCells.has(index);
             
             if (cellData) {
-                if (isFogMode && !isVisible) {
+                // In Fog of War: If a hidden cell becomes owned, reveal it and adjacent cells
+                if (isFogMode && !isVisible && cellData.owner !== 'neutral') {
+                    // Cell was converted - reveal it!
+                    this.visibleCells.add(index);
+                    // Also reveal adjacent cells
+                    const connectedCells = this.getConnectedCells(index);
+                    connectedCells.forEach(idx => this.visibleCells.add(idx));
+                }
+                
+                // Re-check visibility after potential reveal
+                const nowVisible = !isFogMode || this.visibleCells.has(index);
+                
+                if (isFogMode && !nowVisible) {
                     // Cell has content but is hidden in fog
                     cell.textContent = '🌫️';
                     cell.classList.add('fog-hidden');
@@ -3492,21 +3553,9 @@ class NumberConnectionGame {
                     
                     const modeName = this.gameMode.charAt(0).toUpperCase() + this.gameMode.slice(1).replace(/([A-Z])/g, ' $1');
                     
-                    // Build multiplier breakdown text
-                    let multiplierText = `Mode: ${gameModeMultiplier.toFixed(2)}x, AI: ${aiDifficultyMultiplier.toFixed(2)}x`;
-                    if (baseMultiplierBonus > 0) {
-                        multiplierText += `, Base: +${baseMultiplierBonus.toFixed(2)}x`;
-                    }
-                    if (restrictionBonus !== 0) {
-                        multiplierText += `, Restrictions: ${restrictionBonus >= 0 ? '+' : ''}${restrictionBonus.toFixed(2)}x`;
-                    }
-                    if (this.doublePointsActive) {
-                        multiplierText += `, 💎: +${doublePointsMultiplier.toFixed(2)}x`;
-                    }
-                    multiplierText += ` = ${totalMultiplier.toFixed(2)}x total`;
-                    
-                    shopPointsEarned.textContent = `💰 Earned ${pointsEarned.toFixed(1)} pts!\n${modeName} (${difficultyName})\n${multiplierText}`;
-                    shopPointsEarned.style.whiteSpace = 'pre-line';
+                    // Simplified display - just show points earned and multiplier
+                    shopPointsEarned.textContent = `💰 Earned ${pointsEarned.toFixed(1)} pts! (${totalMultiplier.toFixed(2)}x multiplier)`;
+                    shopPointsEarned.style.whiteSpace = 'normal';
                 } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
                     winnerText.textContent = '🤖 AI WINS! 🤖';
                     winnerText.style.color = '#f44336';
@@ -4279,3 +4328,176 @@ document.getElementById('shopModal').addEventListener('click', (e) => {
         closeShop();
     }
 });
+
+// Secret easter egg: click multiplier title 5 times for 100 points
+let multiplierClickCount = 0;
+let multiplierClickTimer = null;
+const multiplierTitle = document.querySelector('.multipliers-title');
+if (multiplierTitle) {
+    multiplierTitle.addEventListener('click', () => {
+        multiplierClickCount++;
+        
+        // Reset counter after 2 seconds of no clicks
+        clearTimeout(multiplierClickTimer);
+        multiplierClickTimer = setTimeout(() => {
+            multiplierClickCount = 0;
+        }, 2000);
+        
+        if (multiplierClickCount >= 5) {
+            // Award 100 points!
+            game.shop.points += 100;
+            game.saveShop();
+            game.updateMultiplierDisplay();
+            SoundEffects.playUnlock();
+            game.showMessage('🎉 Secret bonus! +100 Shop Points!');
+            
+            // Flash the multiplier title red with transition
+            multiplierTitle.style.transition = 'color 0.15s ease, text-shadow 0.15s ease';
+            multiplierTitle.style.color = '#ff0000';
+            multiplierTitle.style.textShadow = '0 0 15px #ff0000, 0 0 30px #ff0000';
+            setTimeout(() => {
+                multiplierTitle.style.color = '';
+                multiplierTitle.style.textShadow = '';
+            }, 500);
+            
+            multiplierClickCount = 0;
+        }
+    });
+}
+
+// ==================== GAMBLING SYSTEM ====================
+let isFlipping = false;
+let currentCasinoGame = null;
+
+function openGambling() {
+    const modal = document.getElementById('gamblingModal');
+    modal.classList.add('show');
+    document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+    document.getElementById('gamblingResult').textContent = '';
+    document.getElementById('gamblingResult').className = 'gambling-result';
+    
+    // Reset to game selection view
+    backToCasinoMenu();
+}
+
+function closeGambling() {
+    document.getElementById('gamblingModal').classList.remove('show');
+    backToCasinoMenu();
+}
+
+function openCasinoGame(gameId) {
+    if (gameId === 'coinflip') {
+        document.getElementById('casinoGamesGrid').style.display = 'none';
+        document.getElementById('coinflipGame').style.display = 'block';
+        currentCasinoGame = 'coinflip';
+        SoundEffects.playButton();
+    }
+    // Future games can be added here
+}
+
+function backToCasinoMenu() {
+    document.getElementById('casinoGamesGrid').style.display = 'grid';
+    
+    // Hide all game views
+    const coinflipGame = document.getElementById('coinflipGame');
+    if (coinflipGame) coinflipGame.style.display = 'none';
+    
+    // Reset coin state
+    const coin = document.getElementById('gamblingCoin');
+    if (coin) coin.classList.remove('flipping', 'result-tails');
+    
+    currentCasinoGame = null;
+}
+
+// Close gambling modal when clicking outside
+document.getElementById('gamblingModal').addEventListener('click', (e) => {
+    if (e.target.id === 'gamblingModal') {
+        closeGambling();
+    }
+});
+
+function setMaxBet() {
+    document.getElementById('betAmount').value = Math.floor(game.shop.points);
+}
+
+function flipCoin(choice) {
+    if (isFlipping) return;
+    
+    const betInput = document.getElementById('betAmount');
+    const bet = parseInt(betInput.value) || 0;
+    
+    if (bet <= 0) {
+        document.getElementById('gamblingResult').textContent = '❌ Enter a valid bet amount!';
+        document.getElementById('gamblingResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    if (bet > game.shop.points) {
+        document.getElementById('gamblingResult').textContent = '❌ Not enough points!';
+        document.getElementById('gamblingResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    isFlipping = true;
+    
+    // Disable buttons during flip
+    document.getElementById('headsBtn').disabled = true;
+    document.getElementById('tailsBtn').disabled = true;
+    
+    const coin = document.getElementById('gamblingCoin');
+    const resultDiv = document.getElementById('gamblingResult');
+    
+    // Determine result
+    const result = Math.random() < 0.5 ? 'heads' : 'tails';
+    const won = choice === result;
+    
+    // Reset coin
+    coin.classList.remove('flipping', 'result-tails');
+    coin.offsetHeight; // Force reflow
+    
+    // Add appropriate animation class
+    if (result === 'tails') {
+        coin.classList.add('flipping', 'result-tails');
+    } else {
+        coin.classList.add('flipping');
+    }
+    
+    resultDiv.textContent = '';
+    resultDiv.className = 'gambling-result';
+    
+    // Play sound
+    SoundEffects.playButton();
+    
+    // Show result after animation
+    setTimeout(() => {
+        if (won) {
+            const winnings = bet * 2;
+            game.shop.points += bet; // Net gain is 1x bet (already had the bet, now have 2x)
+            resultDiv.textContent = `🎉 ${result.toUpperCase()}! You won ${winnings} points!`;
+            resultDiv.className = 'gambling-result win';
+            SoundEffects.playScore();
+        } else {
+            game.shop.points -= bet;
+            resultDiv.textContent = `💔 ${result.toUpperCase()}! You lost ${bet} points!`;
+            resultDiv.className = 'gambling-result lose';
+            SoundEffects.playLose();
+        }
+        
+        // Update displays
+        const currentPoints = Math.floor(game.shop.points);
+        document.getElementById('gamblingPointsDisplay').textContent = currentPoints;
+        game.saveShop();
+        document.getElementById('shopPointsDisplay').textContent = currentPoints;
+        document.getElementById('shopPointsStat').textContent = currentPoints;
+        
+        // Re-enable buttons
+        document.getElementById('headsBtn').disabled = false;
+        document.getElementById('tailsBtn').disabled = false;
+        isFlipping = false;
+        
+        // Update bet input if it exceeds current points
+        if (parseInt(betInput.value) > game.shop.points) {
+            betInput.value = currentPoints > 0 ? currentPoints : 1;
+        }
+    }, 2000);
+}

@@ -2,10 +2,12 @@
 
 A strategic card-based puzzle game where you compete against an AI opponent on a connected grid. Place your numbered cards wisely to score points through matches, sums, and sequences!
 
-![Number Battle Game](./assets/favicon.png)
+## Website
+https://arpan-shah-102.github.io/ai-number-battle
 
 ## ✨ What's New
 
+- **🎰 Casino System** - Click the dice in the title to open the Casino! Play coin flip to gamble your shop points (2x payout on win)
 - Added 4 new Game Modes: Testing Time, Ludicrously Lucky, Fog of War, Territorial
 - Added 3 new Restrictions: Single Path, Scummy Sequences, Glorious Zeros
 - UX improvement: Shop now includes quick "⚙️ Go to Settings" buttons that jump to the relevant Settings section
@@ -97,6 +99,19 @@ UX note: The Shop includes "⚙️ Go to Settings" buttons for quick navigation 
 | **🎯 Pick Card** | 1 | Choose any number (0-9) |
 | **💎 Double Points** | 1 | 2x pts multiplier for the game |
 
+## 🎰 Casino
+
+Click the **🎲 dice icons** in the game title to open the Casino! Gamble your shop points for a chance to double them.
+
+### Coin Flip
+- Bet any amount of your shop points
+- Choose **Heads** or **Tails**
+- Win = **2x your bet** returned
+- Lose = lose your bet
+- Features animated 3D coin flip!
+
+> **Tip:** Use the "Max" button to bet all your points at once!
+
 ## 🤖 AI Difficulty Levels
 
 | Level | Shop Pts Multiplier |
@@ -155,20 +170,6 @@ P19 AI Moon Game/
 │   └── favicon.png # Game icon
 └── README.md       # This file
 ```
-
-## 🚀 Getting Started
-
-### Two ways to start playing
-
-#### One
-Go to: https://arpan-shah-102.github.io/ai-number-battle
-
-### Two
-1. Clone or download the project
-2. Open `index.html` in a modern web browser
-3. Start playing!
-
-No server or build tools required - it's a pure client-side game!
 
 ## 📱 Mobile Support
 
