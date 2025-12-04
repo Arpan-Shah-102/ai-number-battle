@@ -87,6 +87,14 @@
                     
                     <!-- NEW: Power-ups Menu moved outside and below -->
                     <button class="powerups-btn" onclick="showPowerups()">⚡ Power-ups</button>
+                    
+                    <!-- AI vs AI Control Button -->
+                    <div class="ai-vs-ai-controls" id="aiVsAiControls" style="display: none;">
+                        <button id="aiVsAiStartBtn" onclick="game.toggleAiVsAi()" class="ai-control-btn">
+                            ▶️ Start AI Battle
+                        </button>
+                    </div>
+                    
                     <!-- Power-ups Modal -->
                     <div class="modal" id="powerupsModal">
                         <div class="modal-content">
@@ -197,19 +205,23 @@
                         </div>
                         <div class="restriction-option" title="Full grid connections instead of random. More predictable but easier!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionMaintainedPaths" onchange="game.toggleRestriction('maintainedPaths', this.checked)">
-                            <span onclick="document.getElementById('restrictionMaintainedPaths').click()">Maintained Paths (x0.8 pts) - Full grid connections</span>
+                            <span onclick="document.getElementById('restrictionMaintainedPaths').click()">Maintained Paths (x0.75 pts) - Full grid connections</span>
+                        </div>
+                        <div class="restriction-option" title="Progressive difficulty - AI gets smarter each round! Can you survive?" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restrictionSurvival" onchange="game.toggleRestriction('survival', this.checked)">
+                            <span onclick="document.getElementById('restrictionSurvival').click()">Survival Mode (x1.2 pts) - AI difficulty increases!</span>
                         </div>
                         <div class="restriction-option" title="Map is a single winding path - strategic blocking becomes crucial!" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionSinglePath" onchange="game.toggleRestriction('singlePath', this.checked)">
-                            <span onclick="document.getElementById('restrictionSinglePath').click()">Single Path (x1.4 pts) - One winding path only</span>
+                            <span onclick="document.getElementById('restrictionSinglePath').click()">Single Path (x1.3 pts) - One winding path only</span>
                         </div>
                         <div class="restriction-option" title="Only sequences score points! Matches and tens give nothing." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionScummySequences" onchange="game.toggleRestriction('scummySequences', this.checked)">
-                            <span onclick="document.getElementById('restrictionScummySequences').click()">Scummy Sequences (x1.6 pts) - Only sequences score</span>
+                            <span onclick="document.getElementById('restrictionScummySequences').click()">Scummy Sequences (x1.5 pts) - Only sequences score</span>
                         </div>
                         <div class="restriction-option" title="Zero pairs (0+0) give 10 points instead of 1! Chase those zeros." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionGloriousZeros" onchange="game.toggleRestriction('gloriousZeros', this.checked)">
-                            <span onclick="document.getElementById('restrictionGloriousZeros').click()">Glorious Zeros (x0.9 pts) - 0+0 = 10 points!</span>
+                            <span onclick="document.getElementById('restrictionGloriousZeros').click()">Glorious Zeros (x0.75 pts) - 0+0 = 10 points!</span>
                         </div>
                         <div class="restriction-option" title="Watch two AIs battle! Multiplier depends on your AI difficulty setting." style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer;">
                             <input type="checkbox" id="restrictionAiVsAi" onchange="game.toggleRestriction('aiVsAi', this.checked)">
@@ -320,6 +332,18 @@
                         <div class="casino-game-name">Blackjack</div>
                         <div class="casino-game-desc">Beat the dealer, 2x payout!</div>
                         <div class="casino-game-price">150 pts</div>
+                    </div>
+                    <div class="casino-game-card" id="dicerollCard" onclick="openCasinoGame('diceroll')">
+                        <div class="casino-game-icon">🎲</div>
+                        <div class="casino-game-name">Dice Duel</div>
+                        <div class="casino-game-desc">Roll higher than dealer, 2x payout!</div>
+                        <div class="casino-game-price">250 pts</div>
+                    </div>
+                    <div class="casino-game-card" id="rouletteCard" onclick="openCasinoGame('roulette')">
+                        <div class="casino-game-icon">🎡</div>
+                        <div class="casino-game-name">Roulette</div>
+                        <div class="casino-game-desc">Pick a color or number, big wins!</div>
+                        <div class="casino-game-price">567 pts</div>
                     </div>
                 </div>
 
@@ -500,6 +524,117 @@
                     </div>
                 </div>
 
+                <!-- Dice Duel Game View -->
+                <div class="casino-game-view" id="dicerollGame" style="display: none;">
+                    <button class="casino-back-btn" onclick="backToCasinoMenu()">← Back to Games</button>
+                    
+                    <div class="gambling-game">
+                        <h3>🎲 Dice Duel</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Roll two dice. Beat the dealer's total to win 2x your bet!</p>
+                        
+                        <div class="dice-container">
+                            <div class="dice-player">
+                                <div class="dice-label">Your Roll</div>
+                                <div class="dice-display">
+                                    <div class="dice" id="playerDice1">⚀</div>
+                                    <div class="dice" id="playerDice2">⚀</div>
+                                </div>
+                                <div class="dice-total" id="playerDiceTotal">-</div>
+                            </div>
+                            <div class="dice-vs">VS</div>
+                            <div class="dice-dealer">
+                                <div class="dice-label">Dealer's Roll</div>
+                                <div class="dice-display">
+                                    <div class="dice" id="dealerDice1">?</div>
+                                    <div class="dice" id="dealerDice2">?</div>
+                                </div>
+                                <div class="dice-total" id="dealerDiceTotal">-</div>
+                            </div>
+                        </div>
+                        
+                        <div class="gambling-result" id="diceResult"></div>
+                        
+                        <div class="bet-section" id="diceBetSection">
+                            <label for="diceBetAmount">Bet Amount:</label>
+                            <input type="number" id="diceBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setMaxBet('diceBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
+                        </div>
+                        
+                        <div class="gambling-buttons" id="diceButtons">
+                            <button onclick="playDiceDuel()" class="success" id="diceRollBtn" style="font-size: 1.2em; padding: 15px 40px;">
+                                🎲 Roll Dice!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Roulette Game View -->
+                <div class="casino-game-view" id="rouletteGame" style="display: none;">
+                    <button class="casino-back-btn" onclick="backToCasinoMenu()">← Back to Games</button>
+                    
+                    <div class="gambling-game">
+                        <h3>🎡 Roulette</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Pick a bet type and spin the wheel!</p>
+                        
+                        <div class="roulette-container">
+                            <div class="roulette-wheel" id="rouletteWheel">
+                                <div class="roulette-ball" id="rouletteBall"></div>
+                                <div class="roulette-center">🎡</div>
+                            </div>
+                            <div class="roulette-result" id="rouletteNumber">?</div>
+                        </div>
+                        
+                        <div class="gambling-result" id="rouletteResult"></div>
+                        
+                        <div class="roulette-bet-options" id="rouletteBetOptions">
+                            <div class="bet-type-section">
+                                <div class="bet-type-label">Bet Type:</div>
+                                <div class="bet-type-buttons">
+                                    <button class="bet-type-btn active" id="betTypeColor" onclick="selectRouletteBetType('color')">🎨 Color (2x)</button>
+                                    <button class="bet-type-btn" id="betTypeNumber" onclick="selectRouletteBetType('number')">🔢 Number (10x)</button>
+                                </div>
+                            </div>
+                            
+                            <div class="bet-choice-section" id="colorBetSection">
+                                <div class="bet-type-label">Pick Color:</div>
+                                <div class="color-bet-buttons">
+                                    <button class="color-btn red active" id="betRed" onclick="selectRouletteColor('red')">🔴 Red</button>
+                                    <button class="color-btn black" id="betBlack" onclick="selectRouletteColor('black')">⚫ Black</button>
+                                    <button class="color-btn green" id="betGreen" onclick="selectRouletteColor('green')">🟢 Green (14x)</button>
+                                </div>
+                            </div>
+                            
+                            <div class="bet-choice-section" id="numberBetSection" style="display: none;">
+                                <div class="bet-type-label">Pick Number (0-9):</div>
+                                <div class="number-bet-grid">
+                                    <button class="number-btn green" onclick="selectRouletteNumber(0)">0</button>
+                                    <button class="number-btn red active" onclick="selectRouletteNumber(1)">1</button>
+                                    <button class="number-btn black" onclick="selectRouletteNumber(2)">2</button>
+                                    <button class="number-btn red" onclick="selectRouletteNumber(3)">3</button>
+                                    <button class="number-btn black" onclick="selectRouletteNumber(4)">4</button>
+                                    <button class="number-btn red" onclick="selectRouletteNumber(5)">5</button>
+                                    <button class="number-btn black" onclick="selectRouletteNumber(6)">6</button>
+                                    <button class="number-btn red" onclick="selectRouletteNumber(7)">7</button>
+                                    <button class="number-btn black" onclick="selectRouletteNumber(8)">8</button>
+                                    <button class="number-btn red" onclick="selectRouletteNumber(9)">9</button>
+                                </div>
+                            </div>
+                            
+                            <div class="bet-section" id="rouletteBetSection">
+                                <label for="rouletteBetAmount">Bet Amount:</label>
+                                <input type="number" id="rouletteBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                                <button onclick="setMaxBet('rouletteBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
+                            </div>
+                        </div>
+                        
+                        <div class="gambling-buttons" id="rouletteButtons">
+                            <button onclick="spinRoulette()" class="success" id="rouletteSpinBtn" style="font-size: 1.2em; padding: 15px 40px;">
+                                🎡 Spin Wheel!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="modal-buttons">
                     <button onclick="closeGambling()">Close</button>
                 </div>
@@ -556,19 +691,21 @@
                     <div class="points-value" id="shopPointsDisplay">0</div>
                 </div>
 
-                <!-- NEW: Multiplier Info Section -->
-                <div class="shop-info-section">
-                    <h3>💡 Shop Points Multipliers</h3>
-                    <p>Win games to earn shop points! Your earnings are multiplied by:</p>
-                    <ul class="multiplier-list">
-                        <li><strong>Game Mode:</strong> Each mode has a different multiplier (0.8x to 5.0x)</li>
-                        <li><strong>AI Difficulty:</strong> Harder AI = more pts (0.5x to 1.5x)</li>
-                        <li><strong>Restrictions:</strong> Enable restrictions for bonus multipliers!</li>
-                        <li><strong>💎 Double Points Power-up:</strong> Adds +2.0x to total</li>
-                        <li><strong>Total:</strong> All multipliers are added together!</li>
-                    </ul>
-                    <div class="multiplier-example">
-                        Example: Win on Reverse Rules (5x) + Master AI (1.5x) + No Bonus (1.2x) + Double Points (+2x) = 7.7x total!
+                <!-- NEW: Multiplier Info Section - Collapsible -->
+                <div class="shop-info-section collapsible">
+                    <h3 class="shop-info-header" onclick="toggleShopInfoDropdown()">💡 Shop Points Multipliers <span class="dropdown-arrow">▼</span></h3>
+                    <div class="shop-info-content" id="shopInfoContent" style="display: none;">
+                        <p>Win games to earn shop points! Your earnings are multiplied by:</p>
+                        <ul class="multiplier-list">
+                            <li><strong>Game Mode:</strong> Each mode has a different multiplier (0.8x to 5.0x)</li>
+                            <li><strong>AI Difficulty:</strong> Harder AI = more pts (0.5x to 1.5x)</li>
+                            <li><strong>Restrictions:</strong> Enable restrictions for bonus multipliers!</li>
+                            <li><strong>💎 Double Points Power-up:</strong> Adds +2.0x to total</li>
+                            <li><strong>Total:</strong> All multipliers are added together!</li>
+                        </ul>
+                        <div class="multiplier-example">
+                            Example: Win on Reverse Rules (5x) + Master AI (1.5x) + No Bonus (1.2x) + Double Points (+2x) = 7.7x total!
+                        </div>
                     </div>
                 </div>
 
