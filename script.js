@@ -81,9 +81,9 @@ const SoundEffects = {
     },
     
     playSlotSpin() {
-        // Rapid ticking sound for slot spinning
-        for (let i = 0; i < 10; i++) {
-            setTimeout(() => this.playTone(300 + Math.random() * 200, 0.05, 'square', 0.15), i * 50);
+        // Rapid ticking sound for slot/roulette spinning
+        for (let i = 0; i < 8; i++) {
+            setTimeout(() => this.playTone(300 + Math.random() * 200, 0.05, 'square', 0.12), i * 80);
         }
     },
     
@@ -169,7 +169,7 @@ const IconPackMultipliers = {
     emoji: 1.0,
     moon: 0.9,
     dice: 0.8,
-    roman: 1.0
+    roman: 1.15
 };
 // Tutorial System
 function startTutorial() {
@@ -198,6 +198,13 @@ function startTutorial() {
             Click the <strong>🎲 dice icons</strong> in the game title to open the Casino! 
             Gamble your shop points on games like Coin Flip, Slots, Higher/Lower, and Blackjack. 
             Win big or lose it all - it's all part of the fun!
+        </p>
+        
+        <h3>✨ Secret Area:</h3>
+        <p style="line-height: 1.8; margin-bottom: 20px;">
+            There's a hidden <strong>Creator Center</strong> with special features! To access it:
+            Click <em>AI Score</em> → <em>Your Score</em> → <em>Current Card</em> (within 5 seconds each).
+            You'll need 500 Shop Points and 1 Creator Point (from Quests) to unlock its features.
         </p>
         
         <h3>🎮 Interactive Demo:</h3>
@@ -1528,7 +1535,7 @@ class NumberConnectionGame {
                 { name: 'font', label: 'Font', display: '0-9', class: 'icon-font-preview', multiplier: 1.0 },
                 { name: 'moon', label: 'Moon', display: '🌑🌕🌘', class: '', multiplier: 0.9 },
                 { name: 'dice', label: 'Dice', display: '⚀⚁⚂', class: '', multiplier: 0.8 },
-                { name: 'roman', label: 'Roman', display: 'I-X', class: '', multiplier: 1.0 }
+                { name: 'roman', label: 'Roman', display: 'I-X', class: '', multiplier: 1.15 }
             ];
             
             icons.forEach(icon => {
@@ -1542,8 +1549,12 @@ class NumberConnectionGame {
                     // FIXED: Add special class for font preview
                     const displayClass = icon.class ? ` class="${icon.class}"` : '';
                     // Show multiplier if not 1.0
-                    const multiplierHtml = icon.multiplier < 1.0 ? 
-                        `<div class="icon-multiplier" style="color: #f44336; font-size: 0.35em;">×${icon.multiplier}</div>` : '';
+                    let multiplierHtml = '';
+                    if (icon.multiplier < 1.0) {
+                        multiplierHtml = `<div class="icon-multiplier" style="color: #f44336; font-size: 0.35em;">×${icon.multiplier}</div>`;
+                    } else if (icon.multiplier > 1.0) {
+                        multiplierHtml = `<div class="icon-multiplier" style="color: #4caf50; font-size: 0.35em;">×${icon.multiplier}</div>`;
+                    }
                     div.innerHTML = `<div${displayClass}>${icon.display}</div><div class="icon-name">${icon.label}</div>${multiplierHtml}`;
                     div.onclick = () => changeIconPack(icon.name);
                     iconSelector.appendChild(div);
@@ -2271,6 +2282,36 @@ class NumberConnectionGame {
             adjacencyList.set(i, []);
         }
         
+        // NEW: Handle custom level paths from level editor
+        if (this.customLevelLoaded && this.customPaths && this.customPaths.length > 0) {
+            // Build connections from custom paths (format: "row1,col1-row2,col2")
+            for (const pathStr of this.customPaths) {
+                const parts = pathStr.split('-');
+                if (parts.length !== 2) continue;
+                
+                const [r1, c1] = parts[0].split(',').map(Number);
+                const [r2, c2] = parts[1].split(',').map(Number);
+                
+                // Convert row,col to cell index
+                const from = r1 * this.gridSize + c1;
+                const to = r2 * this.gridSize + c2;
+                
+                // Validate cells are within bounds
+                if (from >= 0 && from < this.totalCells && to >= 0 && to < this.totalCells) {
+                    // Check if connection already exists
+                    if (!adjacencyList.get(from).includes(to)) {
+                        this.connections.push({ from: from, to: to });
+                        adjacencyList.get(from).push(to);
+                        adjacencyList.get(to).push(from);
+                    }
+                }
+            }
+            // Reset custom level flag after applying paths
+            this.customLevelLoaded = false;
+            this.customPaths = [];
+            return;
+        }
+        
         // NEW: Single Path restriction - create a single winding path through all cells
         if (this.restrictions.singlePath) {
             this.generateSinglePath(adjacencyList);
@@ -2763,14 +2804,22 @@ class NumberConnectionGame {
         
         // Add all multipliers together, then multiply by icon pack multiplier
         const baseTotal = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
-        const totalMultiplier = baseTotal * iconPackMultiplier;
+        let totalMultiplier = baseTotal * iconPackMultiplier;
+        
+        // Custom levels have 0x multiplier
+        if (this.isPlayingCustomLevel) {
+            totalMultiplier = 0;
+        }
         
         const multiplierElement = document.getElementById('multipliersValue');
         if (multiplierElement) {
             multiplierElement.innerHTML = `${totalMultiplier.toFixed(2)}x <span class="dropdown-arrow">▼</span>`;
             
             // Add visual indicator if multiplier is high
-            if (totalMultiplier >= 8.0) {
+            if (this.isPlayingCustomLevel) {
+                multiplierElement.style.color = '#888';
+                multiplierElement.style.fontSize = '1em';
+            } else if (totalMultiplier >= 8.0) {
                 multiplierElement.style.color = '#FF4500';
                 multiplierElement.style.fontSize = '1.3em';
             } else if (totalMultiplier >= 5.0) {
@@ -2794,6 +2843,15 @@ class NumberConnectionGame {
         if (!breakdownEl) return;
         
         let html = '';
+        
+        // If playing a custom level, show simplified breakdown
+        if (this.isPlayingCustomLevel) {
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">📦 Custom Level</span><span class="multiplier-item-value negative">0.00x</span></div>`;
+            html += `<div class="multiplier-item" style="font-size: 0.85em; color: #888;"><span class="multiplier-item-name">Custom levels don't earn points</span><span class="multiplier-item-value"></span></div>`;
+            html += `<div class="multiplier-item total"><span class="multiplier-item-name">Total</span><span class="multiplier-item-value">0.00x</span></div>`;
+            breakdownEl.innerHTML = html;
+            return;
+        }
         
         // Base
         html += `<div class="multiplier-item"><span class="multiplier-item-name">Base</span><span class="multiplier-item-value">1.00x</span></div>`;
@@ -2864,10 +2922,15 @@ class NumberConnectionGame {
             html += `<div class="multiplier-item"><span class="multiplier-item-name">🔒 AI vs AI (${this.getPlayerAiDifficultyName()})</span><span class="multiplier-item-value ${cls}">${sign}${bonus.toFixed(2)}x</span></div>`;
         }
         
-        // Icon Pack multiplier (if not 1.0)
-        if (iconPackMultiplier !== 1.0) {
+        // Icon Pack multiplier (if not 1.0 and not a custom level)
+        if (iconPackMultiplier !== 1.0 && !this.isPlayingCustomLevel) {
             const cls = iconPackMultiplier < 1.0 ? 'negative' : '';
             html += `<div class="multiplier-item"><span class="multiplier-item-name">🎭 Icon Pack (${this.currentIconPack})</span><span class="multiplier-item-value ${cls}">×${iconPackMultiplier.toFixed(2)}</span></div>`;
+        }
+        
+        // Custom level indicator
+        if (this.isPlayingCustomLevel) {
+            html += `<div class="multiplier-item"><span class="multiplier-item-name">📦 Custom Level</span><span class="multiplier-item-value negative">0.00x</span></div>`;
         }
         
         // Total
@@ -4061,44 +4124,66 @@ class NumberConnectionGame {
             let pointsEarned = 0;
             if (playerWon) {
                 this.stats.wins++;
-                // Calculate all multipliers
-                const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
-                const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
-                const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
-                const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
-                const iconPackMultiplier = IconPackMultipliers[this.currentIconPack] || 1.0;
                 
-                // Calculate restriction multipliers (all 8)
-                let restrictionBonus = 0;
-                if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
-                if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
-                if (this.restrictions.maintainedPaths) restrictionBonus += (this.restrictionMultipliers.maintainedPaths - 1.0);
-                if (this.restrictions.survival) restrictionBonus += (this.restrictionMultipliers.survival - 1.0);
-                if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
-                if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
-                if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
-                if (this.restrictions.aiVsAi) restrictionBonus += (this.getPlayerAiMultiplier() - 1.0);
-                
-                // Add all multipliers together, then multiply by icon pack multiplier
-                const baseTotal = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
-                const totalMultiplier = baseTotal * iconPackMultiplier;
-                
-                // Calculate cash earned
-                const basePoints = this.playerScore * 0.1;
-                pointsEarned = Math.round(basePoints * totalMultiplier * 10) / 10;
-                
-                // Ensure pointsEarned is never NaN
-                if (isNaN(pointsEarned) || pointsEarned < 0) {
+                // Check if playing a custom level (0x multiplier)
+                if (this.customLevelMultiplier === 0) {
                     pointsEarned = 0;
+                } else {
+                    // Calculate all multipliers
+                    const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
+                    const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
+                    const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0;
+                    const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
+                    const iconPackMultiplier = IconPackMultipliers[this.currentIconPack] || 1.0;
+                    
+                    // Calculate restriction multipliers (all 8)
+                    let restrictionBonus = 0;
+                    if (this.restrictions.noBonus) restrictionBonus += (this.restrictionMultipliers.noBonus - 1.0);
+                    if (this.restrictions.aiFirst) restrictionBonus += (this.restrictionMultipliers.aiFirst - 1.0);
+                    if (this.restrictions.maintainedPaths) restrictionBonus += (this.restrictionMultipliers.maintainedPaths - 1.0);
+                    if (this.restrictions.survival) restrictionBonus += (this.restrictionMultipliers.survival - 1.0);
+                    if (this.restrictions.singlePath) restrictionBonus += (this.restrictionMultipliers.singlePath - 1.0);
+                    if (this.restrictions.scummySequences) restrictionBonus += (this.restrictionMultipliers.scummySequences - 1.0);
+                    if (this.restrictions.gloriousZeros) restrictionBonus += (this.restrictionMultipliers.gloriousZeros - 1.0);
+                    if (this.restrictions.aiVsAi) restrictionBonus += (this.getPlayerAiMultiplier() - 1.0);
+                    
+                    // Add all multipliers together, then multiply by icon pack multiplier
+                    const baseTotal = (gameModeMultiplier - 1.0) + (aiDifficultyMultiplier - 1.0) + 1.0 + doublePointsMultiplier + baseMultiplierBonus + restrictionBonus;
+                    const totalMultiplier = baseTotal * iconPackMultiplier;
+                    
+                    // Calculate cash earned
+                    const basePoints = this.playerScore * 0.1;
+                    pointsEarned = Math.round(basePoints * totalMultiplier * 10) / 10;
+                    
+                    // Ensure pointsEarned is never NaN
+                    if (isNaN(pointsEarned) || pointsEarned < 0) {
+                        pointsEarned = 0;
+                    }
                 }
                 
                 this.shop.points += pointsEarned;
                 this.saveShop();
+                
+                // Track points for quests
+                trackQuestProgress('points', Math.floor(pointsEarned));
+                
+                // Track time trials for quests
+                if (this.gameMode === 'timetrials') {
+                    trackQuestProgress('timetrials', 1);
+                }
+                
+                // Track blitz wins for quests
+                if (this.gameMode === 'blitz') {
+                    trackQuestProgress('blitzwin', 1);
+                }
             } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
                 this.stats.losses++;
             } else {
                 this.stats.ties++;
             }
+            
+            // Track games played for quests
+            trackQuestProgress('gamesplayed', 1);
             
             this.saveStats();
 
@@ -4115,12 +4200,19 @@ class NumberConnectionGame {
                     winnerText.style.color = '#4CAF50';
                     SoundEffects.playWin();
                     
-                    // Recalculate multipliers for display
-                    const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
-                    const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
-                    const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
-                    const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
-                    const iconPackMultiplier = IconPackMultipliers[this.currentIconPack] || 1.0;
+                    // Check for custom level (0x multiplier)
+                    if (this.customLevelMultiplier === 0) {
+                        shopPointsEarned.textContent = `Custom Level - 0x multiplier (no points earned)`;
+                        shopPointsEarned.style.whiteSpace = 'normal';
+                        // Reset custom level multiplier for next game
+                        this.customLevelMultiplier = 1;
+                    } else {
+                        // Recalculate multipliers for display
+                        const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
+                        const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
+                        const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
+                        const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
+                        const iconPackMultiplier = IconPackMultipliers[this.currentIconPack] || 1.0;
                     
                     // Calculate restriction bonus for display (all 8)
                     let restrictionBonus = 0;
@@ -4154,6 +4246,7 @@ class NumberConnectionGame {
                     // Simplified display - just show points earned and multiplier
                     shopPointsEarned.textContent = `💰 Earned ${pointsEarned.toFixed(1)} pts! (${totalMultiplier.toFixed(2)}x multiplier)`;
                     shopPointsEarned.style.whiteSpace = 'normal';
+                    }
                 } else if (this.gameMode === 'reverserules' ? (this.aiScore < this.playerScore) : (this.aiScore > this.playerScore)) {
                     winnerText.textContent = '🤖 AI WINS! 🤖';
                     winnerText.style.color = '#f44336';
@@ -4182,6 +4275,13 @@ class NumberConnectionGame {
 
     newGame() {
         SoundEffects.playButton();
+        
+        // If we were playing a custom level, clear it and re-enable settings
+        if (this.isPlayingCustomLevel) {
+            this.clearCustomLevel();
+            loadedCustomLevel = null; // Clear the global custom level reference
+        }
+        
         this.playerScore = 0;
         this.aiScore = 0;
         this.currentPlayerCard = null;
@@ -4190,6 +4290,11 @@ class NumberConnectionGame {
         this.gameEnded = false;
         this.hoveredCellIndex = null;
         this.draggedOverCellIndex = null;
+        
+        // Reset custom level multiplier (unless loadCustomLevel sets it)
+        if (this.customLevelMultiplier === undefined) {
+            this.customLevelMultiplier = 1; // Normal multiplier
+        }
         
         // FIXED: Reset to defaults + permanent + keep shop consumables
         const shopConsumables = this.loadShopConsumables();
@@ -4288,6 +4393,83 @@ class NumberConnectionGame {
         
         this.showMessage('New game started! Place your card!');
     }
+
+    // Load a custom level from the level editor
+    loadCustomLevel(levelData) {
+        // Set board size (custom levels use width/height but game uses gridSize)
+        this.gridSize = levelData.width; // Assume square grid from level editor
+        this.width = levelData.width;
+        this.height = levelData.height;
+        this.totalCells = this.width * this.height;
+        this.deckSize = this.totalCells;
+        
+        // Store custom paths for use in generateConnections
+        this.customPaths = levelData.paths || [];
+        this.customLevelLoaded = true;
+        // Don't set isPlayingCustomLevel yet - newGame() checks this and would clear it!
+        
+        // Apply restrictions
+        if (levelData.restrictions) {
+            this.restrictions.noBonus = levelData.restrictions.noBonus || false;
+            this.restrictions.aiFirst = levelData.restrictions.aiFirst || false;
+            this.restrictions.survival = levelData.restrictions.survival || false;
+            this.restrictions.scummySequences = levelData.restrictions.scummySequences || false;
+            this.restrictions.gloriousZeros = levelData.restrictions.gloriousZeros || false;
+        }
+        
+        // Set AI difficulty
+        if (levelData.aiDifficulty) {
+            this.aiDifficulty = levelData.aiDifficulty;
+            const aiSelect = document.getElementById('aiDifficultySelect');
+            if (aiSelect) {
+                aiSelect.value = levelData.aiDifficulty;
+            }
+        }
+        
+        // Apply icon pack if specified
+        if (levelData.iconPack) {
+            this.currentIconPack = levelData.iconPack;
+            document.body.className = document.body.className.replace(/icon-\w+/g, '');
+            if (levelData.iconPack !== 'default') {
+                document.body.classList.add(`icon-${levelData.iconPack}`);
+            }
+        }
+        
+        // Apply 0x multiplier for custom levels
+        this.customLevelMultiplier = 0;
+        
+        // Update board size selector if this size is available
+        const sizeSelect = document.getElementById('boardSizeSelect');
+        if (sizeSelect) {
+            const sizeValue = String(this.width);
+            const option = Array.from(sizeSelect.options).find(o => o.value === sizeValue);
+            if (option) {
+                sizeSelect.value = sizeValue;
+            }
+        }
+        
+        // Disable settings while playing custom level
+        disableSettingsForCustomLevel();
+        
+        // Start new game with custom level (don't have isPlayingCustomLevel set yet!)
+        this.newGame();
+        
+        // NOW set that we're playing a custom level (after newGame won't clear it)
+        this.isPlayingCustomLevel = true;
+        
+        // Update multiplier display to show 0x
+        this.updateMultiplierDisplay();
+        
+        // Show message about custom level
+        this.showMessage(`Custom level loaded! (0x multiplier)`);
+    }
+    
+    // Clear custom level and re-enable settings
+    clearCustomLevel() {
+        this.isPlayingCustomLevel = false;
+        this.customLevelMultiplier = 1;
+        enableSettingsAfterCustomLevel();
+    }
 }
 
 // Shop Functions
@@ -4297,6 +4479,7 @@ function showShop() {
     
     // Update cash display
     document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    updateFloatingPointsBadges();
     
     // Render shop items
     renderShopItems();
@@ -4314,6 +4497,8 @@ function closeShop() {
 function toggleShopInfoDropdown() {
     const content = document.getElementById('shopInfoContent');
     const section = content.closest('.shop-info-section');
+    
+    SoundEffects.playButton();
     
     if (content.style.display === 'none') {
         content.style.display = 'block';
@@ -4500,9 +4685,9 @@ function renderShopItems() {
     
     const themeBackgrounds = {
         fire: 'linear-gradient(135deg, #f12711 0%, #f5af19 100%)',
-        midnight: 'linear-gradient(135deg, #232526 0%, #414345 100%)',
+        midnight: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
         royal: 'linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%)',
-        cosmic: 'linear-gradient(135deg, #141E30 0%, #243B55 100%)',
+        cosmic: 'linear-gradient(135deg, #0f0c29 0%, #1a1a4e 30%, #4b134f 70%, #c94b4b 100%)',
         lava: 'linear-gradient(135deg, #C33764 0%, #1D2671 100%)',
         emerald: 'linear-gradient(135deg, #348F50 0%, #56B4D3 100%)',
         meme: 'linear-gradient(135deg, #FFD93D 0%, #FF6B6B 100%)',
@@ -4547,14 +4732,19 @@ function renderShopItems() {
         { value: 'font', name: 'Font Icons', price: 10, multiplier: 1.0 },
         { value: 'moon', name: 'Moon Phase Icons', price: 25, multiplier: 0.9 },
         { value: 'dice', name: 'Dice Icons', price: 40, multiplier: 0.8 },
-        { value: 'roman', name: 'Roman Numerals', price: 55, multiplier: 1.0 }
+        { value: 'roman', name: 'Roman Numerals', price: 55, multiplier: 1.15 }
     ];
     
     icons.forEach(icon => {
         const owned = game.shop.owned.icons.includes(icon.value);
         const div = document.createElement('div');
         div.className = owned ? 'shop-item owned' : 'shop-item';
-        const multiplierText = icon.multiplier < 1.0 ? `<div class="shop-item-multiplier" style="color: #f44336;">×${icon.multiplier} pts</div>` : '';
+        let multiplierText = '';
+        if (icon.multiplier < 1.0) {
+            multiplierText = `<div class="shop-item-multiplier" style="color: #f44336;">×${icon.multiplier} pts</div>`;
+        } else if (icon.multiplier > 1.0) {
+            multiplierText = `<div class="shop-item-multiplier" style="color: #4caf50;">×${icon.multiplier} pts</div>`;
+        }
         div.innerHTML = `
             <div class="shop-item-name">🎭 ${icon.name}</div>
             ${multiplierText}
@@ -4843,9 +5033,60 @@ function buyPermanent(type, value, price) {
     SoundEffects.playUnlock();
 }
 
+// Disable settings when playing a custom level
+function disableSettingsForCustomLevel() {
+    const selects = ['difficultySelect', 'boardSizeSelect', 'gamemodeSelect'];
+    selects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = true;
+            el.style.opacity = '0.5';
+        }
+    });
+    
+    // Also disable restriction checkboxes
+    document.querySelectorAll('#restrictionsSettingsSection input[type="checkbox"]').forEach(cb => {
+        cb.disabled = true;
+    });
+    
+    // Disable icon pack selection
+    document.querySelectorAll('.icon-option').forEach(opt => {
+        opt.style.pointerEvents = 'none';
+        opt.style.opacity = '0.5';
+    });
+}
+
+// Re-enable settings after custom level is cleared
+function enableSettingsAfterCustomLevel() {
+    const selects = ['difficultySelect', 'boardSizeSelect', 'gamemodeSelect'];
+    selects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = false;
+            el.style.opacity = '1';
+        }
+    });
+    
+    // Re-enable restriction checkboxes
+    document.querySelectorAll('#restrictionsSettingsSection input[type="checkbox"]').forEach(cb => {
+        cb.disabled = false;
+    });
+    
+    // Re-enable icon pack selection
+    document.querySelectorAll('.icon-option').forEach(opt => {
+        opt.style.pointerEvents = '';
+        opt.style.opacity = '';
+    });
+}
+
 function showSettings() {
     SoundEffects.playButton();
     document.getElementById('settingsModal').classList.add('show');
+    
+    // Show import/export if creator center is unlocked
+    if (typeof updateImportExportVisibility === 'function') {
+        updateImportExportVisibility();
+    }
 }
 
 function closeSettings() {
@@ -4855,6 +5096,18 @@ function closeSettings() {
 
 function showStats() {
     SoundEffects.playButton();
+    
+    // Show creator points if creator center access is unlocked
+    const creatorBox = document.getElementById('creatorPointsStatBox');
+    if (creatorBox) {
+        if (creatorCenterAccessUnlocked) {
+            creatorBox.style.display = '';
+            document.getElementById('creatorPointsStat').textContent = creatorPoints;
+        } else {
+            creatorBox.style.display = 'none';
+        }
+    }
+    
     document.getElementById('statsModal').classList.add('show');
 }
 
@@ -4866,76 +5119,12 @@ function closeStats() {
 function resetStats() {
     SoundEffects.playButton();
     if (confirm('Are you sure you want to reset all statistics, shop data, AND casino progress? This will reset your points and lock all purchased items!')) {
-        // Reset stats
-        game.stats = {
-            wins: 0,
-            losses: 0,
-            ties: 0,
-            highScore: 0,
-            gamesPlayed: 0,
-            shopPoints: 0
-        };
-        game.saveStats();
+        // Clear ALL localStorage data
+        localStorage.clear();
         
-        // Reset shop with FULL structure
-        game.shop = {
-            points: 0,
-            owned: {
-                boards: ['4', '5', '6'],
-                modes: ['classic', 'nobonus', 'survival'],
-                themes: ['default', 'dark', 'nature', 'sunset', 'ocean'],
-                icons: ['default'],
-                aiLevels: ['0.4', '0.5', '0.6'],
-                restrictions: [],
-                permanentPowerups: {
-                    skipAI: 0,
-                    replace: 0,
-                    viewNext: 0,
-                    undo: 0,
-                    pickCard: 0,
-                    doublePoints: 0
-                },
-                baseMultiplier: 0
-            }
-        };
-        game.saveShop();
-        
-        // Reset casino owned games
-        localStorage.setItem('ownedCasinoGames', JSON.stringify([]));
-        
-        // Reset restrictions state
-        game.restrictions = {
-            noBonus: false,
-            aiFirst: false,
-            maintainedPaths: false,
-            singlePath: false,
-            scummySequences: false,
-            gloriousZeros: false
-        };
-        game.saveRestrictions();
-        
-        // Update all displays
-        game.updateStatsDisplay();
-        game.updateSettingsUI();
-        game.updateRestrictionsUI();
-        game.updateMultiplierDisplay();
-        
-        // If shop is open, update it
-        const shopModal = document.getElementById('shopModal');
-        if (shopModal.classList.contains('show')) {
-            document.getElementById('shopPointsDisplay').textContent = '0.0';
-            renderShopItems();
-        }
-        
-        // If casino is open, update it
-        const gamblingModal = document.getElementById('gamblingModal');
-        if (gamblingModal.classList.contains('show')) {
-            document.getElementById('gamblingPointsDisplay').textContent = '0.0';
-            updateCasinoUI();
-        }
-        
-        SoundEffects.playButton();
-        alert('All statistics, shop data, and casino progress have been completely reset!');
+        // Show confirmation and reload
+        alert('All data has been completely reset! The page will now reload.');
+        window.location.reload();
     }
 }
 
@@ -5017,9 +5206,10 @@ document.getElementById('shopModal').addEventListener('click', (e) => {
     }
 });
 
-// Secret easter egg: click multiplier title 5 times for 100 points
+// Secret easter egg: click multiplier title 5 times for 100 points (max 10 times = 1000 pts)
 let multiplierClickCount = 0;
 let multiplierClickTimer = null;
+let secretEggUses = parseInt(localStorage.getItem('secretEggUses') || '0');
 const multiplierTitle = document.querySelector('.multipliers-title');
 if (multiplierTitle) {
     multiplierTitle.addEventListener('click', (e) => {
@@ -5033,21 +5223,42 @@ if (multiplierTitle) {
         }, 2000);
         
         if (multiplierClickCount >= 5) {
-            // Award 100 points!
-            game.shop.points += 100;
-            game.saveShop();
-            game.updateMultiplierDisplay();
-            SoundEffects.playUnlock();
-            game.showMessage('🎉 Secret bonus! +100 Shop Points!');
-            
-            // Flash the multiplier title red with transition
-            multiplierTitle.style.transition = 'color 0.15s ease, text-shadow 0.15s ease';
-            multiplierTitle.style.color = '#ff0000';
-            multiplierTitle.style.textShadow = '0 0 15px #ff0000, 0 0 30px #ff0000';
-            setTimeout(() => {
-                multiplierTitle.style.color = '';
-                multiplierTitle.style.textShadow = '';
-            }, 500);
+            if (secretEggUses < 10) {
+                // Award 100 points!
+                game.shop.points += 100;
+                secretEggUses++;
+                localStorage.setItem('secretEggUses', secretEggUses.toString());
+                game.saveShop();
+                game.updateMultiplierDisplay();
+                SoundEffects.playUnlock();
+                game.showMessage(`🎉 Secret bonus! +100 Shop Points! (${10 - secretEggUses} uses left)`);
+                
+                // Flash the multiplier title green with transition
+                multiplierTitle.style.transition = 'color 0.15s ease, text-shadow 0.15s ease';
+                multiplierTitle.style.color = '#00ff00';
+                multiplierTitle.style.textShadow = '0 0 15px #00ff00, 0 0 30px #00ff00';
+                setTimeout(() => {
+                    multiplierTitle.style.color = '';
+                    multiplierTitle.style.textShadow = '';
+                }, 500);
+            } else {
+                // Penalty for trying after max uses!
+                const penalty = Math.min(250, game.shop.points); // Don't go negative
+                game.shop.points = Math.max(0, game.shop.points - penalty);
+                game.saveShop();
+                game.updateMultiplierDisplay();
+                SoundEffects.playCasinoLose();
+                game.showMessage(`❌ Too greedy! -${penalty} Shop Points! (No more uses)`);
+                
+                // Flash the multiplier title red with transition
+                multiplierTitle.style.transition = 'color 0.15s ease, text-shadow 0.15s ease';
+                multiplierTitle.style.color = '#ff0000';
+                multiplierTitle.style.textShadow = '0 0 15px #ff0000, 0 0 30px #ff0000';
+                setTimeout(() => {
+                    multiplierTitle.style.color = '';
+                    multiplierTitle.style.textShadow = '';
+                }, 500);
+            }
             
             multiplierClickCount = 0;
         }
@@ -5139,7 +5350,7 @@ function buyCasinoGame(gameId) {
 }
 
 function updateCasinoUI() {
-    const games = ['coinflip', 'slots', 'higherlower', 'blackjack', 'diceroll']; // Order by price
+    const games = ['coinflip', 'slots', 'higherlower', 'blackjack', 'diceroll', 'roulette']; // Order by price
     const comingSoon = []; // All games are now available!
     
     games.forEach(gameId => {
@@ -5199,6 +5410,7 @@ function openGambling() {
     const modal = document.getElementById('gamblingModal');
     modal.classList.add('show');
     document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+    updateFloatingPointsBadges();
     document.getElementById('gamblingResult').textContent = '';
     document.getElementById('gamblingResult').className = 'gambling-result';
     
@@ -5207,6 +5419,16 @@ function openGambling() {
     
     // Reset to game selection view
     backToCasinoMenu();
+}
+
+function updateFloatingPointsBadges() {
+    const points = Math.floor(game.shop.points);
+    const casinoBadge = document.getElementById('casinoPointsBadge');
+    const shopBadge = document.getElementById('shopPointsBadge');
+    const questsBadge = document.getElementById('questsPointsBadge');
+    if (casinoBadge) casinoBadge.textContent = points;
+    if (shopBadge) shopBadge.textContent = points;
+    if (questsBadge) questsBadge.textContent = points;
 }
 
 function closeGambling() {
@@ -5220,6 +5442,12 @@ function openCasinoGame(gameId) {
     if (comingSoon.includes(gameId)) {
         alert('This game is coming soon!');
         return;
+    }
+    
+    // Show back button
+    const backBtn = document.querySelector('#gamblingModal .modal-buttons .secondary');
+    if (backBtn && backBtn.textContent.includes('Back to Games')) {
+        backBtn.style.display = '';
     }
     
     if (!isCasinoGameOwned(gameId)) {
@@ -5267,7 +5495,14 @@ function openCasinoGame(gameId) {
 }
 
 function backToCasinoMenu() {
+    SoundEffects.playButton();
     document.getElementById('casinoGamesGrid').style.display = 'grid';
+    
+    // Hide back button (only show when in a game)
+    const backBtn = document.querySelector('.modal-buttons .secondary');
+    if (backBtn && backBtn.textContent.includes('Back to Games')) {
+        backBtn.style.display = 'none';
+    }
     
     // Hide all game views
     const coinflipGame = document.getElementById('coinflipGame');
@@ -5318,6 +5553,7 @@ function backToCasinoMenu() {
     
     // Update points display
     document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+    updateFloatingPointsBadges();
 }
 
 // Close gambling modal when clicking outside
@@ -5388,11 +5624,15 @@ function flipCoin(choice) {
             resultDiv.textContent = `🎉 ${result.toUpperCase()}! You won ${winnings} points!`;
             resultDiv.className = 'gambling-result win';
             SoundEffects.playCasinoWin();
+            trackQuestProgress('points', bet); // Track net gain
+            trackQuestProgress('casinowin', 1);
+            trackQuestProgress('highbet', bet); // Track high bet
         } else {
             game.shop.points -= bet;
             resultDiv.textContent = `💔 ${result.toUpperCase()}! You lost ${bet} points!`;
             resultDiv.className = 'gambling-result lose';
             SoundEffects.playCasinoLose();
+            trackQuestProgress('casinolose', 1);
         }
         
         // Update displays
@@ -5532,11 +5772,16 @@ function spinSlots() {
             
             // Add winning animation to reels
             reels.forEach(reel => reel.classList.add('winning'));
+            
+            // Track for quests
+            trackQuestProgress('casinowin', 1);
+            trackQuestProgress('slotsjackpot', 1);
         } else {
             // No win
             resultDiv.textContent = `${results[0]}${results[1]}${results[2]} - No match. Try again!`;
             resultDiv.className = 'gambling-result lose';
             SoundEffects.playCasinoLose();
+            trackQuestProgress('casinolose', 1);
         }
         
         // Update displays
@@ -5663,11 +5908,14 @@ function guessHigherLower(guess) {
             resultDiv.textContent = `🎉 Correct! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You won ${winnings} points!`;
             resultDiv.className = 'gambling-result win';
             SoundEffects.playCasinoWin();
+            trackQuestProgress('casinowin', 1);
+            trackQuestProgress('highbet', bet);
         } else {
             game.shop.points -= bet;
             resultDiv.textContent = `💔 Wrong! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You lost ${bet} points!`;
             resultDiv.className = 'gambling-result lose';
             SoundEffects.playCasinoLose();
+            trackQuestProgress('casinolose', 1);
         }
         
         // Update displays
@@ -5830,6 +6078,9 @@ function startBlackjack() {
         document.getElementById('bjResult').className = 'gambling-result lose';
         return;
     }
+    
+    // Track blackjack play for quests
+    trackQuestProgress('blackjack', 1);
     
     // Deduct bet
     bjCurrentBet = bet;
@@ -6045,6 +6296,7 @@ function endBlackjack(reason) {
         } else if (bjPlayerTotal < bjDealerTotal) {
             message = `💔 Dealer wins! ${bjDealerTotal} beats your ${bjPlayerTotal}. Lost ${bjCurrentBet} points.`;
             SoundEffects.playCasinoLose();
+            trackQuestProgress('casinolose', 1);
         } else {
             // Push - return bet
             game.shop.points += bjCurrentBet;
@@ -6057,8 +6309,11 @@ function endBlackjack(reason) {
         game.shop.points += bjCurrentBet * 2; // Return bet + winnings
         resultDiv.className = 'gambling-result win';
         SoundEffects.playCasinoWin();
+        trackQuestProgress('casinowin', 1);
+        trackQuestProgress('highbet', bjCurrentBet);
     } else if (reason === 'bust' || bjPlayerTotal < bjDealerTotal) {
         resultDiv.className = 'gambling-result lose';
+        if (reason === 'bust') trackQuestProgress('casinolose', 1);
     }
     
     resultDiv.textContent = message;
@@ -6220,11 +6475,14 @@ function playDiceDuel() {
                                 resultDiv.textContent = `🎉 You win! ${playerTotal} beats ${dealerTotal}! +${winnings} points!`;
                                 resultDiv.className = 'gambling-result win';
                                 SoundEffects.playCasinoWin();
+                                trackQuestProgress('casinowin', 1);
+                                trackQuestProgress('highbet', bet);
                             } else if (playerTotal < dealerTotal) {
                                 // Dealer wins
                                 resultDiv.textContent = `💔 Dealer wins! ${dealerTotal} beats your ${playerTotal}. Lost ${bet} points.`;
                                 resultDiv.className = 'gambling-result lose';
                                 SoundEffects.playCasinoLose();
+                                trackQuestProgress('casinolose', 1);
                             } else {
                                 // Tie - return bet
                                 game.shop.points += bet;
@@ -6255,6 +6513,26 @@ function playDiceDuel() {
 let rouletteBetType = 'color'; // 'color' or 'number'
 let rouletteColorChoice = 'red'; // 'red', 'black', or 'green'
 let rouletteNumberChoice = 1;
+let rouletteCurrentRotation = 0;
+
+// Load saved roulette preferences
+function loadRoulettePreferences() {
+    const saved = localStorage.getItem('roulettePreferences');
+    if (saved) {
+        const prefs = JSON.parse(saved);
+        rouletteBetType = prefs.betType || 'color';
+        rouletteColorChoice = prefs.colorChoice || 'red';
+        rouletteNumberChoice = prefs.numberChoice !== undefined ? prefs.numberChoice : 1;
+    }
+}
+
+function saveRoulettePreferences() {
+    localStorage.setItem('roulettePreferences', JSON.stringify({
+        betType: rouletteBetType,
+        colorChoice: rouletteColorChoice,
+        numberChoice: rouletteNumberChoice
+    }));
+}
 
 // Number colors: 0 = green, odd = red, even = black
 const ROULETTE_COLORS = {
@@ -6263,22 +6541,37 @@ const ROULETTE_COLORS = {
     6: 'black', 7: 'red', 8: 'black', 9: 'red'
 };
 
+// Wheel order: numbers arranged around the wheel (0 at top, going clockwise)
+const ROULETTE_WHEEL_ORDER = [0, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+
+function initRouletteNumbers() {
+    // No numbers displayed on the wheel - just the colored segments spin
+}
+
 function setupRoulette() {
     document.getElementById('rouletteNumber').textContent = '?';
     document.getElementById('rouletteResult').textContent = '';
     document.getElementById('rouletteResult').className = 'gambling-result';
     document.getElementById('rouletteSpinBtn').disabled = false;
     document.getElementById('rouletteBetOptions').style.display = 'flex';
-    document.getElementById('rouletteWheel').style.transform = 'rotate(0deg)';
-    document.getElementById('rouletteWheel').classList.remove('spinning');
+    
+    const wheel = document.getElementById('rouletteWheel');
+    wheel.classList.remove('spinning', 'stopping');
+    wheel.style.transition = 'none';
+    wheel.style.transform = `rotate(${rouletteCurrentRotation}deg)`;
+    
     isRouletteSpinning = false;
     
-    // Reset to defaults
-    rouletteBetType = 'color';
-    rouletteColorChoice = 'red';
-    rouletteNumberChoice = 1;
-    selectRouletteBetType('color');
-    selectRouletteColor('red');
+    // Load saved preferences
+    loadRoulettePreferences();
+    
+    // Apply saved preferences to UI
+    selectRouletteBetType(rouletteBetType);
+    if (rouletteBetType === 'color') {
+        selectRouletteColor(rouletteColorChoice);
+    } else {
+        selectRouletteNumber(rouletteNumberChoice);
+    }
 }
 
 function selectRouletteBetType(type) {
@@ -6292,6 +6585,7 @@ function selectRouletteBetType(type) {
     document.getElementById('colorBetSection').style.display = type === 'color' ? 'flex' : 'none';
     document.getElementById('numberBetSection').style.display = type === 'number' ? 'flex' : 'none';
     
+    saveRoulettePreferences();
     SoundEffects.playButton();
 }
 
@@ -6302,6 +6596,7 @@ function selectRouletteColor(color) {
     document.getElementById('betBlack').classList.toggle('active', color === 'black');
     document.getElementById('betGreen').classList.toggle('active', color === 'green');
     
+    saveRoulettePreferences();
     SoundEffects.playButton();
 }
 
@@ -6314,6 +6609,7 @@ function selectRouletteNumber(num) {
         btn.classList.toggle('active', i === num);
     });
     
+    saveRoulettePreferences();
     SoundEffects.playButton();
 }
 
@@ -6350,68 +6646,92 @@ function spinRoulette() {
     const result = Math.floor(Math.random() * 10);
     const resultColor = ROULETTE_COLORS[result];
     
-    // Calculate rotation (each number is 36 degrees, with extra spins)
-    const extraSpins = 5; // Number of full rotations
-    const targetDegree = (9 - result) * 36; // Position on wheel (reversed for visual)
-    const totalRotation = (extraSpins * 360) + targetDegree;
+    // Find the position of the result number in the wheel order
+    const resultIndex = ROULETTE_WHEEL_ORDER.indexOf(result);
+    
+    // Calculate rotation: each number is 36 degrees apart
+    // We need the result number to end up at the top (under the pointer)
+    const extraSpins = 5 + Math.floor(Math.random() * 3); // 5-7 full rotations
+    const targetDegree = resultIndex * 36; // Position of the number
+    const totalRotation = rouletteCurrentRotation + (extraSpins * 360) + targetDegree;
     
     // Start spinning animation
+    wheel.classList.remove('spinning', 'stopping');
+    wheel.style.transition = 'none';
+    wheel.style.transform = 'rotate(0deg)';
+    // Force reflow to ensure animation starts fresh
+    void wheel.offsetWidth;
     wheel.classList.add('spinning');
     numberDisplay.textContent = '?';
+    resultDiv.textContent = '';
+    resultDiv.className = 'gambling-result';
     
-    SoundEffects.playButton();
+    SoundEffects.playSlotSpin();
     
-    // Stop after 2 seconds and show result
+    // After 400ms, stop spinning and transition to final position (1000ms total)
     setTimeout(() => {
         wheel.classList.remove('spinning');
+        // Force reflow before adding transition
+        void wheel.offsetWidth;
+        wheel.style.transition = 'transform 0.6s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
         wheel.style.transform = `rotate(${totalRotation}deg)`;
+        rouletteCurrentRotation = totalRotation % 360;
         
-        // Show number with color emoji
-        const colorEmoji = resultColor === 'red' ? '🔴' : resultColor === 'black' ? '⚫' : '🟢';
-        numberDisplay.textContent = `${colorEmoji} ${result}`;
-        
-        // Determine win
-        let won = false;
-        let multiplier = 0;
-        
-        if (rouletteBetType === 'color') {
-            if (rouletteColorChoice === resultColor) {
-                won = true;
-                multiplier = rouletteColorChoice === 'green' ? 14 : 2;
-            }
-        } else {
-            if (rouletteNumberChoice === result) {
-                won = true;
-                multiplier = 10;
-            }
-        }
-        
+        // Wait for the transition to complete (600ms)
         setTimeout(() => {
-            if (won) {
-                const winnings = bet * multiplier;
-                game.shop.points += winnings;
-                resultDiv.textContent = `🎉 ${colorEmoji} ${result}! You win ${multiplier}x! +${winnings} points!`;
-                resultDiv.className = 'gambling-result win';
-                SoundEffects.playCasinoWin();
+            wheel.classList.remove('stopping');
+            SoundEffects.playSlotStop();
+            
+            // Show number with color emoji immediately
+            const colorEmoji = resultColor === 'red' ? '🔴' : resultColor === 'black' ? '⚫' : '🟢';
+            numberDisplay.textContent = `${colorEmoji} ${result}`;
+            
+            // Determine win
+            let won = false;
+            let multiplier = 0;
+            
+            if (rouletteBetType === 'color') {
+                if (rouletteColorChoice === resultColor) {
+                    won = true;
+                    multiplier = rouletteColorChoice === 'green' ? 14 : 2;
+                }
             } else {
-                const betTypeText = rouletteBetType === 'color' ? rouletteColorChoice : `number ${rouletteNumberChoice}`;
-                resultDiv.textContent = `💔 ${colorEmoji} ${result}! You bet on ${betTypeText}. Lost ${bet} points.`;
-                resultDiv.className = 'gambling-result lose';
-                SoundEffects.playCasinoLose();
+                if (rouletteNumberChoice === result) {
+                    won = true;
+                    multiplier = 10;
+                }
             }
             
-            // Update displays
-            document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
-            game.saveShop();
-            document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
-            document.getElementById('shopPointsStat').textContent = game.shop.points.toFixed(1);
-            
-            // Reset after delay
             setTimeout(() => {
-                setupRoulette();
-            }, 2500);
-        }, 500);
-    }, 2500);
+                if (won) {
+                    const winnings = bet * multiplier;
+                    game.shop.points += winnings;
+                    resultDiv.textContent = `🎉 ${colorEmoji} ${result}! You win ${multiplier}x! +${winnings} points!`;
+                    resultDiv.className = 'gambling-result win';
+                    SoundEffects.playCasinoWin();
+                    trackQuestProgress('casinowin', 1);
+                    trackQuestProgress('highbet', bet);
+                } else {
+                    const betTypeText = rouletteBetType === 'color' ? rouletteColorChoice : `number ${rouletteNumberChoice}`;
+                    resultDiv.textContent = `💔 ${colorEmoji} ${result}! You bet on ${betTypeText}. Lost ${bet} points.`;
+                    resultDiv.className = 'gambling-result lose';
+                    SoundEffects.playCasinoLose();
+                    trackQuestProgress('casinolose', 1);
+                }
+                
+                // Update displays
+                document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+                game.saveShop();
+                document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+                document.getElementById('shopPointsStat').textContent = game.shop.points.toFixed(1);
+            
+                // Reset after delay
+                setTimeout(() => {
+                    setupRoulette();
+                }, 1000);
+            }, 300);
+        }, 600);
+    }, 400);
 }
 
 // ==================== MULTIPLIER DROPDOWN ====================
@@ -6432,5 +6752,1933 @@ function toggleMultiplierDropdown(event) {
     } else {
         dropdown.classList.add('show');
         container.classList.add('dropdown-open');
+    }
+}
+
+// ==================== CREATOR CENTER SECRET ====================
+let creatorSecretStep = 0;
+let creatorSecretTimer = null;
+let creatorCenterUnlocked = false;
+let creatorCenterAccessUnlocked = false;
+let creatorPoints = 0;
+
+// Quest system
+let questsData = {
+    active: [],
+    pointsEarnedSinceQuestStart: 0,
+    blackjackPlayedSinceQuestStart: 0,
+    timeTrialsPlayedSinceQuestStart: 0,
+    casinoWinsSinceQuestStart: 0,
+    casinoWinStreakCurrent: 0,
+    gamesPlayedSinceQuestStart: 0,
+    slotsJackpotsSinceQuestStart: 0
+};
+
+const QUEST_DEFINITIONS = [
+    { id: 'points1000', title: 'Point Collector', description: 'Earn 1,000 points', target: 1000, type: 'points', reward: 1 },
+    { id: 'blackjack3', title: 'Card Shark', description: 'Play Blackjack 3 times', target: 3, type: 'blackjack', reward: 1 },
+    { id: 'timetrials3', title: 'Speed Runner', description: 'Play Time Trials 3 times', target: 3, type: 'timetrials', reward: 1 },
+    { id: 'luckystreak', title: 'Lucky Streak', description: 'Win 3 casino games in a row', target: 3, type: 'casinostreak', reward: 1 },
+    { id: 'highroller', title: 'High Roller', description: 'Bet 500+ points in one casino game', target: 1, type: 'highbet', reward: 1 },
+    { id: 'marathon', title: 'Marathon Player', description: 'Play 10 games in one session', target: 10, type: 'gamesplayed', reward: 1 },
+    { id: 'casinoregular', title: 'Casino Regular', description: 'Win 5 casino games', target: 5, type: 'casinowins', reward: 1 },
+    { id: 'jackpothunter', title: 'Jackpot Hunter', description: 'Hit the slots jackpot', target: 1, type: 'slotsjackpot', reward: 2 },
+    { id: 'blitzchamp', title: 'Blitz Champion', description: 'Win 3 Blitz mode games', target: 3, type: 'blitzwins', reward: 1 },
+    { id: 'points5000', title: 'Points Master', description: 'Earn 5,000 points total', target: 5000, type: 'points', reward: 2 },
+    { id: 'blackjack10', title: 'Blackjack Pro', description: 'Play Blackjack 10 times', target: 10, type: 'blackjack', reward: 2 },
+    { id: 'timetrials10', title: 'Time Trial Expert', description: 'Play Time Trials 10 times', target: 10, type: 'timetrials', reward: 2 }
+];
+
+function loadCreatorData() {
+    const saved = localStorage.getItem('creatorData');
+    if (saved) {
+        const data = JSON.parse(saved);
+        creatorCenterUnlocked = data.unlocked || false;
+        creatorCenterAccessUnlocked = data.accessUnlocked || false;
+        creatorPoints = data.creatorPoints || 0;
+        questsData = data.quests || {
+            active: [],
+            pointsEarnedSinceQuestStart: 0,
+            blackjackPlayedSinceQuestStart: 0,
+            timeTrialsPlayedSinceQuestStart: 0,
+            casinoWinsSinceQuestStart: 0,
+            casinoWinStreakCurrent: 0,
+            gamesPlayedSinceQuestStart: 0,
+            slotsJackpotsSinceQuestStart: 0
+        };
+        // Ensure new fields exist
+        if (!questsData.casinoWinsSinceQuestStart) questsData.casinoWinsSinceQuestStart = 0;
+        if (!questsData.casinoWinStreakCurrent) questsData.casinoWinStreakCurrent = 0;
+        if (!questsData.gamesPlayedSinceQuestStart) questsData.gamesPlayedSinceQuestStart = 0;
+        if (!questsData.slotsJackpotsSinceQuestStart) questsData.slotsJackpotsSinceQuestStart = 0;
+    }
+    
+    // Show quests button if access is unlocked
+    if (creatorCenterAccessUnlocked) {
+        const questsBtn = document.getElementById('questsBtn');
+        if (questsBtn) questsBtn.style.display = '';
+    }
+    
+    // Initialize quests if none exist
+    if (questsData.active.length === 0 && creatorCenterAccessUnlocked) {
+        initializeQuests();
+    }
+}
+
+function saveCreatorData() {
+    localStorage.setItem('creatorData', JSON.stringify({
+        unlocked: creatorCenterUnlocked,
+        accessUnlocked: creatorCenterAccessUnlocked,
+        creatorPoints: creatorPoints,
+        quests: questsData
+    }));
+}
+
+function initializeQuests() {
+    // Randomly pick 3 unique quests
+    const shuffled = [...QUEST_DEFINITIONS].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, 3);
+    
+    questsData.active = selected.map(q => ({
+        ...q,
+        progress: 0
+    }));
+    questsData.pointsEarnedSinceQuestStart = 0;
+    questsData.blackjackPlayedSinceQuestStart = 0;
+    questsData.timeTrialsPlayedSinceQuestStart = 0;
+    questsData.casinoWinsSinceQuestStart = 0;
+    questsData.casinoWinStreakCurrent = 0;
+    questsData.gamesPlayedSinceQuestStart = 0;
+    questsData.slotsJackpotsSinceQuestStart = 0;
+    saveCreatorData();
+}
+
+// Secret unlock: AI score -> Player score -> Current card (within 5 seconds)
+function setupCreatorSecretTrigger() {
+    const aiScore = document.querySelector('.score-card.ai');
+    const playerScore = document.querySelector('.score-card.player');
+    const currentCard = document.getElementById('currentCard');
+    
+    if (!aiScore || !playerScore || !currentCard) return;
+    
+    function resetSecret() {
+        creatorSecretStep = 0;
+        clearTimeout(creatorSecretTimer);
+    }
+    
+    // Helper to add both click and touch events
+    function addTapListener(element, callback) {
+        element.addEventListener('click', callback);
+        element.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            callback(e);
+        });
+    }
+    
+    addTapListener(aiScore, () => {
+        if (creatorSecretStep === 0) {
+            creatorSecretStep = 1;
+            creatorSecretTimer = setTimeout(resetSecret, 5000);
+        } else {
+            resetSecret();
+        }
+    });
+    
+    addTapListener(playerScore, () => {
+        if (creatorSecretStep === 1) {
+            creatorSecretStep = 2;
+        } else {
+            resetSecret();
+        }
+    });
+    
+    addTapListener(currentCard, (e) => {
+        // Don't trigger if dragging (only for click events)
+        if (e.type === 'click' && e.detail === 0) return;
+        
+        if (creatorSecretStep === 2) {
+            resetSecret();
+            openCreatorCenter();
+        }
+    });
+}
+
+function openCreatorCenter() {
+    // Mark access as unlocked (for showing quests button)
+    if (!creatorCenterAccessUnlocked) {
+        creatorCenterAccessUnlocked = true;
+        const questsBtn = document.getElementById('questsBtn');
+        if (questsBtn) questsBtn.style.display = '';
+        
+        // Initialize quests
+        if (questsData.active.length === 0) {
+            initializeQuests();
+        }
+        
+        saveCreatorData();
+        SoundEffects.playUnlock();
+        game.showMessage('🔓 Secret discovered! Quests unlocked!');
+    }
+    
+    SoundEffects.playButton();
+    
+    // Update displays
+    document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+    document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
+    
+    // Show appropriate panel
+    if (creatorCenterUnlocked) {
+        document.getElementById('creatorLockPanel').style.display = 'none';
+        document.getElementById('creatorFeatures').style.display = 'block';
+        
+        // Initialize level editor
+        initLevelEditor();
+        
+        // Show import/export in settings
+        updateImportExportVisibility();
+    } else {
+        document.getElementById('creatorLockPanel').style.display = 'block';
+        document.getElementById('creatorFeatures').style.display = 'none';
+        updateCreatorUnlockButton();
+    }
+    
+    document.getElementById('creatorCenter').classList.remove('hidden');
+}
+
+function closeCreatorCenter() {
+    // Save test state if in test mode
+    if (editorTestMode) {
+        saveEditorTestState();
+        stopEditorTest();
+    }
+    
+    SoundEffects.playButton();
+    document.getElementById('creatorCenter').classList.add('hidden');
+}
+
+// Secret: Click creator center title 10 times in 3 seconds for bonus
+let creatorTitleClicks = 0;
+let creatorTitleTimer = null;
+
+function setupCreatorTitleSecret() {
+    const title = document.querySelector('.creator-content h2');
+    if (!title) return;
+    
+    // No visual indication - this is for devs only
+    title.addEventListener('click', () => {
+        creatorTitleClicks++;
+        
+        if (creatorTitleClicks === 1) {
+            creatorTitleTimer = setTimeout(() => {
+                creatorTitleClicks = 0;
+            }, 3000);
+        }
+        
+        if (creatorTitleClicks >= 15) {
+            clearTimeout(creatorTitleTimer);
+            creatorTitleClicks = 0;
+            
+            // Award bonus
+            game.shop.points += 1000;
+            creatorPoints += 5;
+            creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+            game.saveShop();
+            saveCreatorData();
+            
+            // Update displays
+            document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+            document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
+            updateFloatingPointsBadges();
+            
+            SoundEffects.playJackpot();
+            game.showMessage('🎉 SECRET BONUS! +1000 pts, +5 Creator Points!');
+        }
+    });
+}
+
+// Level Editor title secret (same bonus as creator center title)
+let editorTitleClicks = 0;
+let editorTitleTimer = null;
+
+function setupEditorTitleSecret() {
+    const title = document.getElementById('levelEditorTitle');
+    if (!title) return;
+    
+    title.style.cursor = 'default'; // No visual hint
+    title.addEventListener('click', () => {
+        editorTitleClicks++;
+        
+        if (editorTitleClicks === 1) {
+            editorTitleTimer = setTimeout(() => {
+                editorTitleClicks = 0;
+            }, 3000);
+        }
+        
+        if (editorTitleClicks >= 15) {
+            clearTimeout(editorTitleTimer);
+            editorTitleClicks = 0;
+            
+            // Award bonus
+            game.shop.points += 1000;
+            creatorPoints += 5;
+            creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+            game.saveShop();
+            saveCreatorData();
+            
+            // Update displays
+            document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+            document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
+            updateFloatingPointsBadges();
+            
+            SoundEffects.playJackpot();
+            game.showMessage('🎉 DEV BONUS! +1000 pts, +5 Creator Points!');
+        }
+    });
+}
+
+function updateCreatorUnlockButton() {
+    const btn = document.getElementById('creatorUnlockBtn');
+    const canUnlock = game.shop.points >= 500 && creatorPoints >= 1;
+    btn.disabled = !canUnlock;
+}
+
+function tryUnlockCreatorCenter() {
+    if (game.shop.points >= 500 && creatorPoints >= 1) {
+        game.shop.points -= 500;
+        creatorPoints -= 1;
+        creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+        creatorCenterUnlocked = true;
+        
+        game.saveShop();
+        saveCreatorData();
+        
+        SoundEffects.playUnlock();
+        
+        document.getElementById('creatorLockPanel').style.display = 'none';
+        document.getElementById('creatorFeatures').style.display = 'block';
+        document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+        document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
+        
+        // Initialize level editor
+        initLevelEditor();
+        
+        // Show import/export in settings
+        updateImportExportVisibility();
+    }
+}
+
+// ==================== QUESTS SYSTEM ====================
+function showQuests() {
+    SoundEffects.playButton();
+    
+    document.getElementById('questsCreatorPoints').textContent = creatorPoints;
+    updateFloatingPointsBadges();
+    renderQuests();
+    
+    document.getElementById('questsModal').classList.add('show');
+}
+
+function closeQuests() {
+    SoundEffects.playButton();
+    document.getElementById('questsModal').classList.remove('show');
+}
+
+function renderQuests() {
+    const container = document.getElementById('questsList');
+    
+    if (questsData.active.length === 0) {
+        container.innerHTML = '<div class="no-quests-message">No quests available. Click refresh to get new quests!</div>';
+        return;
+    }
+    
+    container.innerHTML = questsData.active.map((quest, index) => {
+        const progress = getQuestProgress(quest);
+        const percentage = Math.min(100, (progress / quest.target) * 100);
+        const isComplete = progress >= quest.target;
+        
+        return `
+            <div class="quest-item ${isComplete ? 'completed' : ''}">
+                <div class="quest-info">
+                    <div class="quest-title">${quest.title}</div>
+                    <div class="quest-progress-text">${quest.description} (${progress}/${quest.target})</div>
+                    <div class="quest-progress-bar">
+                        <div class="quest-progress-fill" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+                <button class="quest-claim-btn ${isComplete ? 'ready' : ''}" 
+                        onclick="claimQuest(${index})" 
+                        ${!isComplete ? 'disabled' : ''}>
+                    ${isComplete ? '⭐ Claim' : 'In Progress'}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function getQuestProgress(quest) {
+    switch (quest.type) {
+        case 'points':
+            return questsData.pointsEarnedSinceQuestStart;
+        case 'blackjack':
+            return questsData.blackjackPlayedSinceQuestStart;
+        case 'timetrials':
+            return questsData.timeTrialsPlayedSinceQuestStart;
+        case 'casinostreak':
+            return questsData.casinoWinStreakCurrent;
+        case 'casinowins':
+            return questsData.casinoWinsSinceQuestStart;
+        case 'gamesplayed':
+            return questsData.gamesPlayedSinceQuestStart;
+        case 'slotsjackpot':
+            return questsData.slotsJackpotsSinceQuestStart;
+        case 'highbet':
+            return quest.progress || 0; // Tracked per-quest
+        case 'blitzwins':
+            return quest.progress || 0; // Tracked per-quest
+        default:
+            return quest.progress || 0;
+    }
+}
+
+function claimQuest(index) {
+    const quest = questsData.active[index];
+    if (!quest) return;
+    
+    const progress = getQuestProgress(quest);
+    if (progress < quest.target) return;
+    
+    // Award creator point
+    creatorPoints += quest.reward;
+    creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+    
+    // Remove the quest
+    questsData.active.splice(index, 1);
+    
+    saveCreatorData();
+    SoundEffects.playUnlock();
+    
+    document.getElementById('questsCreatorPoints').textContent = creatorPoints;
+    renderQuests();
+    
+    game.showMessage(`⭐ Quest complete! +${quest.reward} Creator Point!`);
+}
+
+function refreshQuests() {
+    if (game.shop.points < 5) {
+        alert('Not enough points! Need 5 points to refresh quests.');
+        return;
+    }
+    
+    game.shop.points -= 5;
+    game.saveShop();
+    
+    // Reset all quests
+    initializeQuests();
+    
+    SoundEffects.playButton();
+    renderQuests();
+    updateFloatingPointsBadges();
+}
+
+// Track quest progress
+function trackQuestProgress(type, amount = 1) {
+    if (!creatorCenterAccessUnlocked) return;
+    
+    switch (type) {
+        case 'points':
+            questsData.pointsEarnedSinceQuestStart += amount;
+            break;
+        case 'blackjack':
+            questsData.blackjackPlayedSinceQuestStart += amount;
+            break;
+        case 'timetrials':
+            questsData.timeTrialsPlayedSinceQuestStart += amount;
+            break;
+        case 'casinowin':
+            questsData.casinoWinsSinceQuestStart += amount;
+            questsData.casinoWinStreakCurrent += amount;
+            break;
+        case 'casinolose':
+            questsData.casinoWinStreakCurrent = 0; // Reset streak on loss
+            break;
+        case 'gamesplayed':
+            questsData.gamesPlayedSinceQuestStart += amount;
+            break;
+        case 'slotsjackpot':
+            questsData.slotsJackpotsSinceQuestStart += amount;
+            break;
+        case 'highbet':
+            // Update per-quest progress for high bet quests
+            questsData.active.forEach(q => {
+                if (q.type === 'highbet' && amount >= 500) {
+                    q.progress = 1;
+                }
+            });
+            break;
+        case 'blitzwin':
+            // Update per-quest progress for blitz wins
+            questsData.active.forEach(q => {
+                if (q.type === 'blitzwins') {
+                    q.progress = (q.progress || 0) + amount;
+                }
+            });
+            break;
+    }
+    
+    saveCreatorData();
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+    loadCreatorData();
+    setupCreatorSecretTrigger();
+    setupCreatorTitleSecret();
+});
+
+// Close quests modal on background click
+document.getElementById('questsModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'questsModal') {
+        closeQuests();
+    }
+});
+
+// ==================== IMPORT/EXPORT SYSTEM ====================
+function exportGameData() {
+    const gameData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        shop: game.shop,
+        stats: game.stats,
+        creatorCenter: {
+            unlocked: creatorCenterUnlocked,
+            creatorPoints: creatorPoints,
+            quests: questsData
+        },
+        settings: {
+            theme: document.body.className,
+            iconPack: game.iconPack,
+            sfxEnabled: SoundEffects.enabled
+        },
+        casinoOwned: getCasinoOwnedGames(),
+        roulettePrefs: {
+            betType: rouletteBetType,
+            colorChoice: rouletteColorChoice,
+            numberChoice: rouletteNumberChoice
+        }
+    };
+    
+    const blob = new Blob([JSON.stringify(gameData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `number-battle-save-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    SoundEffects.playButton();
+}
+
+function importGameData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (!data.version) {
+                alert('Invalid save file format!');
+                return;
+            }
+            
+            // Restore shop data
+            if (data.shop) {
+                game.shop = { ...game.shop, ...data.shop };
+                game.saveShop();
+            }
+            
+            // Restore stats
+            if (data.stats) {
+                game.stats = { ...game.stats, ...data.stats };
+                localStorage.setItem('numberGameStats', JSON.stringify(game.stats));
+            }
+            
+            // Restore creator center
+            if (data.creatorCenter) {
+                creatorCenterUnlocked = data.creatorCenter.unlocked || false;
+                creatorPoints = data.creatorCenter.creatorPoints || 0;
+                if (data.creatorCenter.quests) {
+                    questsData = data.creatorCenter.quests;
+                }
+                saveCreatorData();
+            }
+            
+            // Restore settings
+            if (data.settings) {
+                if (data.settings.theme) {
+                    document.body.className = data.settings.theme;
+                    localStorage.setItem('numberGameTheme', data.settings.theme);
+                }
+                if (data.settings.iconPack) {
+                    game.iconPack = data.settings.iconPack;
+                    localStorage.setItem('numberGameIconPack', data.settings.iconPack);
+                }
+                if (data.settings.sfxEnabled !== undefined) {
+                    SoundEffects.enabled = data.settings.sfxEnabled;
+                    document.getElementById('sfxToggle').checked = SoundEffects.enabled;
+                }
+            }
+            
+            // Restore casino owned games
+            if (data.casinoOwned) {
+                saveCasinoOwnedGames(data.casinoOwned);
+            }
+            
+            // Restore roulette preferences
+            if (data.roulettePrefs) {
+                rouletteBetType = data.roulettePrefs.betType || 'color';
+                rouletteColorChoice = data.roulettePrefs.colorChoice || 'red';
+                rouletteNumberChoice = data.roulettePrefs.numberChoice || 1;
+                saveRoulettePreferences();
+            }
+            
+            // Update UI
+            game.updateUI();
+            
+            alert('Game data imported successfully!');
+            SoundEffects.playUnlock();
+            
+        } catch (err) {
+            alert('Error reading save file: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    
+    // Reset input
+    event.target.value = '';
+}
+
+// Show import/export section when creator center is unlocked
+function updateImportExportVisibility() {
+    const section = document.getElementById('importExportSection');
+    if (section && creatorCenterUnlocked) {
+        section.style.display = 'block';
+    }
+}
+
+// ==================== LEVEL EDITOR ====================
+let editorTool = 'connect'; // 'connect' or 'remove'
+let editorPaths = new Set(); // Store paths as "row1,col1-row2,col2"
+let editorWidth = 5;
+let editorHeight = 5;
+let editorDragging = false;
+let editorDragStart = null;
+let editorDragButton = 0; // 0 = left, 2 = right
+
+function initLevelEditor() {
+    editorWidth = 5;
+    editorHeight = 5;
+    editorPaths = new Set();
+    document.getElementById('editorWidth').value = editorWidth;
+    document.getElementById('editorHeight').value = editorHeight;
+    updateEditorBoard();
+    // Setup editor events after board is created
+    setupEditorEvents();
+    // Setup dev secret on editor title
+    setupEditorTitleSecret();
+}
+
+function updateEditorBoard() {
+    editorWidth = Math.min(10, Math.max(3, parseInt(document.getElementById('editorWidth').value) || 5));
+    editorHeight = Math.min(10, Math.max(3, parseInt(document.getElementById('editorHeight').value) || 5));
+    
+    // Clamp input values
+    document.getElementById('editorWidth').value = editorWidth;
+    document.getElementById('editorHeight').value = editorHeight;
+    
+    const board = document.getElementById('editorBoard');
+    
+    // Smaller gap for larger boards
+    const maxDim = Math.max(editorWidth, editorHeight);
+    const gap = maxDim >= 8 ? 4 : maxDim >= 6 ? 6 : 8;
+    
+    // Use 1fr - cells will stretch to fill container (non-square is fine)
+    board.style.gridTemplateColumns = `repeat(${editorWidth}, 1fr)`;
+    board.style.gridTemplateRows = `repeat(${editorHeight}, 1fr)`;
+    board.style.gap = `${gap}px`;
+    board.innerHTML = '';
+    
+    // Filter out paths that are outside the new dimensions
+    const validPaths = new Set();
+    editorPaths.forEach(path => {
+        const [cell1, cell2] = path.split('-');
+        const [r1, c1] = cell1.split(',').map(Number);
+        const [r2, c2] = cell2.split(',').map(Number);
+        if (r1 < editorHeight && c1 < editorWidth && r2 < editorHeight && c2 < editorWidth) {
+            validPaths.add(path);
+        }
+    });
+    editorPaths = validPaths;
+    
+    // Create cells
+    for (let row = 0; row < editorHeight; row++) {
+        for (let col = 0; col < editorWidth; col++) {
+            const cell = document.createElement('div');
+            cell.className = 'editor-cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            
+            // Add path classes
+            if (hasPath(row, col, row, col + 1)) {
+                cell.classList.add('path-right');
+            }
+            if (hasPath(row, col, row + 1, col)) {
+                cell.classList.add('path-down');
+            }
+            
+            board.appendChild(cell);
+        }
+    }
+    
+    // Update path CSS variables based on gap size
+    document.documentElement.style.setProperty('--editor-gap', `${gap}px`);
+    
+    updateEditorInfo();
+}
+
+// Refresh just the path visuals without rebuilding the board
+function refreshEditorPathVisuals() {
+    const cells = document.querySelectorAll('#editorBoard .editor-cell');
+    cells.forEach(cell => {
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+        
+        cell.classList.remove('path-right', 'path-down');
+        
+        if (hasPath(row, col, row, col + 1)) {
+            cell.classList.add('path-right');
+        }
+        if (hasPath(row, col, row + 1, col)) {
+            cell.classList.add('path-down');
+        }
+    });
+    updateEditorInfo();
+}
+
+// Get cell data from a mouse/touch position
+function getEditorCellAt(x, y) {
+    const element = document.elementFromPoint(x, y);
+    if (element && element.classList.contains('editor-cell')) {
+        return {
+            row: parseInt(element.dataset.row),
+            col: parseInt(element.dataset.col),
+            element: element
+        };
+    }
+    return null;
+}
+
+// Handle path drawing - called on mouse/touch move
+function handleEditorDraw(x, y) {
+    // Block editing during test mode
+    if (editorTestMode) return;
+    if (!editorDragging || !editorDragStart) return;
+    
+    const cell = getEditorCellAt(x, y);
+    if (!cell) return;
+    
+    const row = cell.row;
+    const col = cell.col;
+    
+    // Check if this cell is adjacent to our last position
+    const dr = Math.abs(row - editorDragStart.row);
+    const dc = Math.abs(col - editorDragStart.col);
+    
+    // Only process if moving to an adjacent cell (not diagonal)
+    if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+        // Determine action based on mouse button and tool
+        // Left click (button 0): connect tool = add, disconnect tool = remove
+        // Right click (button 2): connect tool = remove, disconnect tool = add
+        const isRightClick = editorDragButton === 2;
+        const shouldAdd = (editorTool === 'connect') !== isRightClick;
+        
+        if (shouldAdd) {
+            addPath(editorDragStart.row, editorDragStart.col, row, col);
+            SoundEffects.playCardPlace();
+        } else {
+            removePath(editorDragStart.row, editorDragStart.col, row, col);
+            SoundEffects.playButton();
+        }
+        
+        // Highlight the new cell
+        cell.element.classList.add('selected');
+        
+        // Update start position for next segment
+        editorDragStart = { row, col };
+        refreshEditorPathVisuals();
+    }
+}
+
+// Start drawing
+function startEditorDraw(x, y, button = 0) {
+    // Block editing during test mode
+    if (editorTestMode) return;
+    
+    const cell = getEditorCellAt(x, y);
+    if (!cell) return;
+    
+    editorDragging = true;
+    editorDragStart = { row: cell.row, col: cell.col };
+    editorDragButton = button; // Track which mouse button started the drag
+    cell.element.classList.add('selected');
+}
+
+// Stop drawing
+function stopEditorDraw() {
+    editorDragging = false;
+    editorDragStart = null;
+    document.querySelectorAll('#editorBoard .editor-cell.selected').forEach(c => {
+        c.classList.remove('selected');
+    });
+}
+
+// Set up all editor event listeners (called when editor is initialized)
+let editorEventsSetup = false;
+function setupEditorEvents() {
+    const board = document.getElementById('editorBoard');
+    if (!board || editorEventsSetup) return;
+    editorEventsSetup = true;
+    
+    // Prevent context menu on right-click for path drawing
+    board.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+    
+    // Mouse events - handle both left (0) and right (2) click
+    board.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        if (e.button === 0 || e.button === 2) {
+            startEditorDraw(e.clientX, e.clientY, e.button);
+        }
+    });
+    
+    board.addEventListener('mousemove', (e) => {
+        handleEditorDraw(e.clientX, e.clientY);
+    });
+    
+    board.addEventListener('mouseup', stopEditorDraw);
+    board.addEventListener('mouseleave', stopEditorDraw);
+    
+    // Touch events (no right-click equivalent, use default left-click behavior)
+    board.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        startEditorDraw(touch.clientX, touch.clientY, 0);
+    }, { passive: false });
+    
+    board.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handleEditorDraw(touch.clientX, touch.clientY);
+    }, { passive: false });
+    
+    board.addEventListener('touchend', stopEditorDraw);
+    board.addEventListener('touchcancel', stopEditorDraw);
+}
+
+// Global mouseup to catch releases outside the board
+document.addEventListener('mouseup', stopEditorDraw);
+
+function hasPath(r1, c1, r2, c2) {
+    const path1 = `${r1},${c1}-${r2},${c2}`;
+    const path2 = `${r2},${c2}-${r1},${c1}`;
+    return editorPaths.has(path1) || editorPaths.has(path2);
+}
+
+function addPath(r1, c1, r2, c2) {
+    // Normalize path order
+    const path = r1 < r2 || (r1 === r2 && c1 < c2) 
+        ? `${r1},${c1}-${r2},${c2}` 
+        : `${r2},${c2}-${r1},${c1}`;
+    editorPaths.add(path);
+}
+
+function removePath(r1, c1, r2, c2) {
+    const path1 = `${r1},${c1}-${r2},${c2}`;
+    const path2 = `${r2},${c2}-${r1},${c1}`;
+    editorPaths.delete(path1);
+    editorPaths.delete(path2);
+}
+
+function setEditorTool(tool) {
+    editorTool = tool;
+    document.getElementById('toolConnect').classList.toggle('active', tool === 'connect');
+    document.getElementById('toolRemove').classList.toggle('active', tool === 'remove');
+    SoundEffects.playButton();
+}
+
+function randomizeEditorPaths() {
+    editorPaths = new Set();
+    
+    // Use the same algorithm as the main game's generateConnections
+    const adjacencyList = new Map();
+    const totalCells = editorWidth * editorHeight;
+    
+    for (let i = 0; i < totalCells; i++) {
+        adjacencyList.set(i, []);
+    }
+    
+    // Random path generation like main game (80% chance per direction)
+    for (let i = 0; i < totalCells; i++) {
+        const row = Math.floor(i / editorWidth);
+        const col = i % editorWidth;
+        
+        // Connect to right neighbor
+        if (col < editorWidth - 1) {
+            const right = i + 1;
+            if (Math.random() > 0.2 || adjacencyList.get(i).length === 0) {
+                if (!adjacencyList.get(i).includes(right)) {
+                    addPath(row, col, row, col + 1);
+                    adjacencyList.get(i).push(right);
+                    adjacencyList.get(right).push(i);
+                }
+            }
+        }
+        
+        // Connect to bottom neighbor
+        if (row < editorHeight - 1) {
+            const bottom = i + editorWidth;
+            if (Math.random() > 0.2 || adjacencyList.get(i).length === 0) {
+                if (!adjacencyList.get(i).includes(bottom)) {
+                    addPath(row, col, row + 1, col);
+                    adjacencyList.get(i).push(bottom);
+                    adjacencyList.get(bottom).push(i);
+                }
+            }
+        }
+    }
+    
+    // Ensure all cells have at least one connection
+    for (let i = 0; i < totalCells; i++) {
+        if (adjacencyList.get(i).length === 0) {
+            const row = Math.floor(i / editorWidth);
+            const col = i % editorWidth;
+            const neighbors = [];
+            
+            // Check all 4 directions
+            if (col > 0) neighbors.push({ r: row, c: col - 1 });
+            if (col < editorWidth - 1) neighbors.push({ r: row, c: col + 1 });
+            if (row > 0) neighbors.push({ r: row - 1, c: col });
+            if (row < editorHeight - 1) neighbors.push({ r: row + 1, c: col });
+            
+            if (neighbors.length > 0) {
+                const neighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                addPath(row, col, neighbor.r, neighbor.c);
+            }
+        }
+    }
+    
+    updateEditorBoard();
+    SoundEffects.playButton();
+}
+
+function connectAllPaths() {
+    editorPaths = new Set();
+    
+    // Connect all adjacent cells (right and down)
+    for (let row = 0; row < editorHeight; row++) {
+        for (let col = 0; col < editorWidth; col++) {
+            // Connect to right neighbor
+            if (col < editorWidth - 1) {
+                addPath(row, col, row, col + 1);
+            }
+            // Connect to bottom neighbor
+            if (row < editorHeight - 1) {
+                addPath(row, col, row + 1, col);
+            }
+        }
+    }
+    
+    updateEditorBoard();
+    SoundEffects.playButton();
+}
+
+function clearAllPaths() {
+    editorPaths = new Set();
+    updateEditorBoard();
+    SoundEffects.playButton();
+}
+
+function updateEditorInfo() {
+    document.getElementById('editorInfoSize').textContent = `${editorWidth}x${editorHeight}`;
+    document.getElementById('editorInfoPaths').textContent = editorPaths.size;
+    
+    const modeSelect = document.getElementById('editorGameMode');
+    const modeText = modeSelect.options[modeSelect.selectedIndex].text;
+    document.getElementById('editorInfoMode').textContent = modeText;
+    
+    const aiSelect = document.getElementById('editorAIDifficulty');
+    const aiText = aiSelect.options[aiSelect.selectedIndex].text;
+    document.getElementById('editorInfoAI').textContent = aiText;
+    
+    // Count active restrictions
+    const restrictions = getEditorRestrictions();
+    const activeRestrictions = Object.values(restrictions).filter(v => v).length;
+    document.getElementById('editorInfoRestrictions').textContent = activeRestrictions > 0 ? `${activeRestrictions} active` : 'None';
+}
+
+// Update editor icon pack display
+let editorIconPack = 'default';
+
+function updateEditorIconPack() {
+    const select = document.getElementById('editorIconPack');
+    if (select) {
+        editorIconPack = select.value;
+    }
+    // Re-render board if in test mode
+    if (editorTestMode && editorTestGame) {
+        renderEditorTestBoard();
+    }
+}
+
+// Update info when mode or AI changes
+document.getElementById('editorGameMode')?.addEventListener('change', updateEditorInfo);
+document.getElementById('editorAIDifficulty')?.addEventListener('change', updateEditorInfo);
+
+// Update info when restrictions change
+document.querySelectorAll('.editor-restrictions input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', updateEditorInfo);
+});
+
+function getEditorRestrictions() {
+    return {
+        noBonus: document.getElementById('restrictNoBonus')?.checked || false,
+        aiFirst: document.getElementById('restrictAIFirst')?.checked || false,
+        survival: document.getElementById('restrictSurvival')?.checked || false,
+        scummySequences: document.getElementById('restrictScummySeq')?.checked || false,
+        gloriousZeros: document.getElementById('restrictGloriousZeros')?.checked || false
+    };
+}
+
+// ==================== EDITOR TEST GAME ====================
+let editorTestMode = false;
+let editorTestGame = null;
+let editorSavedTestState = null;
+
+function toggleEditorTest() {
+    if (editorTestMode) {
+        stopEditorTest();
+    } else {
+        startEditorTest();
+    }
+}
+
+function startEditorTest() {
+    // Check if player has enough creator points
+    if (creatorPoints < 0.1) {
+        alert('Not enough Creator Points! Need 0.1 ⭐ to test.');
+        return;
+    }
+    
+    // Deduct cost
+    creatorPoints -= 0.1;
+    creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+    saveCreatorData();
+    document.getElementById('creatorCreatorPoints').textContent = creatorPoints.toFixed(1);
+    
+    editorTestMode = true;
+    
+    // Update button
+    const btn = document.getElementById('editorTestBtn');
+    btn.innerHTML = '⏹️ Stop Game <span class="cost-badge">Free</span>';
+    btn.classList.add('testing');
+    
+    // Disable editor controls
+    document.querySelector('.level-editor-left').classList.add('testing');
+    document.querySelector('.level-editor-center').classList.add('testing');
+    
+    // Show test section
+    document.getElementById('editorTestSection').style.display = 'block';
+    
+    // Create and start test game
+    startEditorTestGame();
+    
+    SoundEffects.playButton();
+}
+
+function stopEditorTest() {
+    editorTestMode = false;
+    
+    // Update button
+    const btn = document.getElementById('editorTestBtn');
+    btn.innerHTML = '▶️ Test Game <span class="cost-badge">0.1 ⭐</span>';
+    btn.classList.remove('testing');
+    
+    // Re-enable editor controls
+    document.querySelector('.level-editor-left').classList.remove('testing');
+    document.querySelector('.level-editor-center').classList.remove('testing');
+    
+    // Hide test section
+    document.getElementById('editorTestSection').style.display = 'none';
+    
+    // Clean up test game
+    if (editorTestGame) {
+        editorTestGame = null;
+    }
+    
+    // Restore editor board
+    updateEditorBoard();
+    
+    SoundEffects.playButton();
+}
+
+function startEditorTestGame() {
+    // Create level data from editor
+    const levelData = {
+        width: editorWidth,
+        height: editorHeight,
+        paths: Array.from(editorPaths),
+        gameMode: document.getElementById('editorGameMode').value,
+        aiDifficulty: document.getElementById('editorAIDifficulty').value,
+        restrictions: getEditorRestrictions()
+    };
+    
+    // Initialize test game state
+    editorTestGame = {
+        levelData: levelData,
+        board: [],
+        playerScore: 0,
+        aiScore: 0,
+        currentCard: Math.floor(Math.random() * 10),
+        nextCard: Math.floor(Math.random() * 10),
+        isPlayerTurn: !levelData.restrictions.aiFirst,
+        gameOver: false,
+        connections: buildConnectionsFromPaths(levelData.paths, levelData.width, levelData.height)
+    };
+    
+    // Initialize board
+    for (let i = 0; i < levelData.height; i++) {
+        editorTestGame.board[i] = [];
+        for (let j = 0; j < levelData.width; j++) {
+            editorTestGame.board[i][j] = { value: null, owner: null };
+        }
+    }
+    
+    // Render the test board
+    renderEditorTestBoard();
+    updateEditorTestUI();
+    
+    // If AI goes first, trigger AI move
+    if (levelData.restrictions.aiFirst) {
+        setTimeout(() => editorTestAIMove(), 500);
+    }
+}
+
+function buildConnectionsFromPaths(paths, width, height) {
+    const connections = new Map();
+    const total = width * height;
+    
+    for (let i = 0; i < total; i++) {
+        connections.set(i, []);
+    }
+    
+    paths.forEach(path => {
+        const [cell1, cell2] = path.split('-');
+        const [r1, c1] = cell1.split(',').map(Number);
+        const [r2, c2] = cell2.split(',').map(Number);
+        
+        const idx1 = r1 * width + c1;
+        const idx2 = r2 * width + c2;
+        
+        if (!connections.get(idx1).includes(idx2)) {
+            connections.get(idx1).push(idx2);
+        }
+        if (!connections.get(idx2).includes(idx1)) {
+            connections.get(idx2).push(idx1);
+        }
+    });
+    
+    return connections;
+}
+
+function renderEditorTestBoard() {
+    const board = document.getElementById('editorBoard');
+    const levelData = editorTestGame.levelData;
+    
+    // Update grid
+    board.style.gridTemplateColumns = `repeat(${levelData.width}, 1fr)`;
+    board.style.gridTemplateRows = `repeat(${levelData.height}, 1fr)`;
+    board.innerHTML = '';
+    
+    // Get current icon pack
+    const iconPack = IconPacks[editorIconPack] || IconPacks.default;
+    
+    for (let row = 0; row < levelData.height; row++) {
+        for (let col = 0; col < levelData.width; col++) {
+            const cell = document.createElement('div');
+            cell.className = 'editor-cell editor-test-cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            
+            const cellData = editorTestGame.board[row][col];
+            if (cellData.value !== null) {
+                cell.textContent = iconPack(cellData.value);
+                // Handle player, AI, and neutral owned cells
+                if (cellData.owner === 'player') {
+                    cell.classList.add('player-owned');
+                } else if (cellData.owner === 'ai') {
+                    cell.classList.add('ai-owned');
+                } else {
+                    // Neutral cell - has value but no owner (didn't score)
+                    cell.classList.add('neutral');
+                }
+                cell.classList.remove('empty');
+            } else {
+                cell.classList.add('empty');
+                // Use a closure to capture row and col
+                const r = row, c = col;
+                cell.addEventListener('click', () => editorTestPlaceCard(r, c));
+            }
+            
+            // Add path classes
+            if (hasPath(row, col, row, col + 1)) {
+                cell.classList.add('path-right');
+            }
+            if (hasPath(row, col, row + 1, col)) {
+                cell.classList.add('path-down');
+            }
+            
+            board.appendChild(cell);
+        }
+    }
+}
+
+function updateEditorTestUI() {
+    const iconPack = IconPacks[editorIconPack] || IconPacks.default;
+    document.getElementById('editorTestCard').textContent = iconPack(editorTestGame.currentCard);
+    document.getElementById('editorTestPlayerScore').textContent = editorTestGame.playerScore;
+    document.getElementById('editorTestAIScore').textContent = editorTestGame.aiScore;
+    
+    const gameMode = editorTestGame.levelData.gameMode || 'classic';
+    const restrictions = editorTestGame.levelData.restrictions || {};
+    
+    if (editorTestGame.gameOver) {
+        let finalPlayerScore = editorTestGame.playerScore;
+        let finalAIScore = editorTestGame.aiScore;
+        
+        // Territorial mode: final score = owned cells count
+        if (gameMode === 'territorial') {
+            finalPlayerScore = countEditorTestOwnedCells('player');
+            finalAIScore = countEditorTestOwnedCells('ai');
+            document.getElementById('editorTestPlayerScore').textContent = finalPlayerScore;
+            document.getElementById('editorTestAIScore').textContent = finalAIScore;
+        } 
+        // Normal bonus points (unless noBonus restriction or Territorial mode)
+        else if (!restrictions.noBonus && !editorTestGame.bonusApplied) {
+            editorTestGame.bonusApplied = true;
+            const playerBonus = countEditorTestOwnedCells('player');
+            const aiBonus = countEditorTestOwnedCells('ai');
+            editorTestGame.playerScore += playerBonus;
+            editorTestGame.aiScore += aiBonus;
+            finalPlayerScore = editorTestGame.playerScore;
+            finalAIScore = editorTestGame.aiScore;
+            
+            // Update display after bonus
+            document.getElementById('editorTestPlayerScore').textContent = editorTestGame.playerScore;
+            document.getElementById('editorTestAIScore').textContent = editorTestGame.aiScore;
+            
+            // Animate bonus if there were any
+            if (playerBonus > 0 || aiBonus > 0) {
+                animateEditorTestBonus();
+            }
+        }
+        
+        // Determine winner - Reverse Rules means LOWER score wins!
+        let winner;
+        if (gameMode === 'reverserules') {
+            winner = finalPlayerScore < finalAIScore ? 'You win!' : 
+                     finalPlayerScore > finalAIScore ? 'AI wins!' : 'Tie!';
+        } else {
+            winner = finalPlayerScore > finalAIScore ? 'You win!' : 
+                     finalPlayerScore < finalAIScore ? 'AI wins!' : 'Tie!';
+        }
+        document.getElementById('editorTestMessage').textContent = winner;
+    } else {
+        document.getElementById('editorTestMessage').textContent = 
+            editorTestGame.isPlayerTurn ? 'Your turn!' : 'AI thinking...';
+    }
+}
+
+function countEditorTestOwnedCells(owner) {
+    let count = 0;
+    for (let r = 0; r < editorTestGame.levelData.height; r++) {
+        for (let c = 0; c < editorTestGame.levelData.width; c++) {
+            if (editorTestGame.board[r][c].owner === owner) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+function animateEditorTestBonus() {
+    const board = document.getElementById('editorBoard');
+    const cells = board.querySelectorAll('.editor-test-cell');
+    
+    // Flash each owned cell
+    cells.forEach((cell, index) => {
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+        const cellData = editorTestGame.board[row][col];
+        
+        if (cellData.owner === 'player' || cellData.owner === 'ai') {
+            setTimeout(() => {
+                cell.classList.add('bonus-flash');
+                setTimeout(() => {
+                    cell.classList.remove('bonus-flash');
+                }, 400);
+            }, index * 50);
+        }
+    });
+}
+
+function editorTestPlaceCard(row, col) {
+    if (!editorTestMode || !editorTestGame || editorTestGame.gameOver) return;
+    if (!editorTestGame.isPlayerTurn) return;
+    if (editorTestGame.board[row][col].value !== null) return;
+    
+    // Place card - start as neutral (null owner), ownership set when scoring
+    editorTestGame.board[row][col] = { value: editorTestGame.currentCard, owner: null };
+    
+    // Calculate score (with game mode support) - this will set ownership if points scored
+    const points = calculateEditorTestScore(row, col, editorTestGame.currentCard, 'player');
+    editorTestGame.playerScore += points;
+    
+    // Check for Sudden Death - first to 10 points wins!
+    const gameMode = editorTestGame.levelData.gameMode || 'classic';
+    if (gameMode === 'suddendeath' && editorTestGame.playerScore >= 10) {
+        editorTestGame.gameOver = true;
+        renderEditorTestBoard();
+        updateEditorTestUI();
+        return;
+    }
+    
+    // Draw next card
+    editorTestGame.currentCard = editorTestGame.nextCard;
+    editorTestGame.nextCard = Math.floor(Math.random() * 10);
+    
+    SoundEffects.playCardPlace();
+    
+    // Check game over
+    if (isEditorTestBoardFull()) {
+        editorTestGame.gameOver = true;
+        renderEditorTestBoard();
+        updateEditorTestUI();
+        return;
+    }
+    
+    // AI turn
+    editorTestGame.isPlayerTurn = false;
+    renderEditorTestBoard();
+    updateEditorTestUI();
+    
+    setTimeout(() => editorTestAIMove(), 500);
+}
+
+// Get AI difficulty value from string
+function getEditorTestAIDifficulty() {
+    const difficultyStr = editorTestGame.levelData.aiDifficulty || '0.4';
+    return parseFloat(difficultyStr);
+}
+
+// Simulate points for a potential move (without actually placing)
+function simulateEditorTestScore(row, col, value, owner) {
+    // Create a temporary copy of the board
+    const tempBoard = editorTestGame.board.map(r => r.map(c => ({ ...c })));
+    tempBoard[row][col] = { value, owner: null };
+    
+    // Calculate what score this move would get
+    let points = 0;
+    const width = editorTestGame.levelData.width;
+    const idx = row * width + col;
+    const connections = editorTestGame.connections.get(idx) || [];
+    const restrictions = editorTestGame.levelData.restrictions || {};
+    const gameMode = editorTestGame.levelData.gameMode || 'classic';
+    const isSubtraction = gameMode === 'subtraction';
+    const isScummySequences = restrictions.scummySequences || false;
+    const isGloriousZeros = restrictions.gloriousZeros || false;
+    
+    if (!isScummySequences) {
+        connections.forEach(connIdx => {
+            const connRow = Math.floor(connIdx / width);
+            const connCol = connIdx % width;
+            const connCell = tempBoard[connRow][connCol];
+            
+            if (connCell.value !== null) {
+                if (connCell.value === value) {
+                    if (isGloriousZeros && value === 0) {
+                        points += 10;
+                    } else {
+                        points += 1;
+                    }
+                }
+                
+                if (isSubtraction) {
+                    if (Math.abs(connCell.value - value) === 10) {
+                        points += 2;
+                    }
+                } else {
+                    if (connCell.value + value === 10) {
+                        points += 2;
+                    }
+                }
+            }
+        });
+    }
+    
+    return points;
+}
+
+// Find the best move for AI based on difficulty
+function findBestEditorTestMove(aiCard) {
+    const emptyCells = [];
+    for (let r = 0; r < editorTestGame.levelData.height; r++) {
+        for (let c = 0; c < editorTestGame.levelData.width; c++) {
+            if (editorTestGame.board[r][c].value === null) {
+                emptyCells.push({ row: r, col: c });
+            }
+        }
+    }
+    
+    if (emptyCells.length === 0) return null;
+    
+    const aiDifficulty = getEditorTestAIDifficulty();
+    const gameMode = editorTestGame.levelData.gameMode || 'classic';
+    
+    // Reverse Rules: AI tries to get LOWEST score
+    if (gameMode === 'reverserules') {
+        // Random chance to make suboptimal move based on difficulty
+        if (Math.random() > aiDifficulty) {
+            return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        }
+        
+        let lowestScore = Infinity;
+        let bestCell = null;
+        
+        emptyCells.forEach(cell => {
+            const points = simulateEditorTestScore(cell.row, cell.col, aiCard, 'ai');
+            if (points < lowestScore) {
+                lowestScore = points;
+                bestCell = cell;
+            }
+        });
+        
+        return bestCell || emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    }
+    
+    // Normal modes: AI tries to get HIGHEST score
+    // Random chance to make suboptimal move based on difficulty
+    if (Math.random() > aiDifficulty) {
+        return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    }
+    
+    let bestScore = -1;
+    let bestCell = null;
+    
+    emptyCells.forEach(cell => {
+        const points = simulateEditorTestScore(cell.row, cell.col, aiCard, 'ai');
+        if (points > bestScore) {
+            bestScore = points;
+            bestCell = cell;
+        }
+    });
+    
+    return bestCell || emptyCells[Math.floor(Math.random() * emptyCells.length)];
+}
+
+function editorTestAIMove() {
+    if (!editorTestMode || !editorTestGame || editorTestGame.gameOver) return;
+    
+    // Check if board is full
+    let hasEmptyCells = false;
+    for (let r = 0; r < editorTestGame.levelData.height; r++) {
+        for (let c = 0; c < editorTestGame.levelData.width; c++) {
+            if (editorTestGame.board[r][c].value === null) {
+                hasEmptyCells = true;
+                break;
+            }
+        }
+        if (hasEmptyCells) break;
+    }
+    
+    if (!hasEmptyCells) {
+        editorTestGame.gameOver = true;
+        updateEditorTestUI();
+        return;
+    }
+    
+    // Generate AI card
+    const aiCard = Math.floor(Math.random() * 10);
+    
+    // Use smart AI to find best move based on difficulty
+    const bestMove = findBestEditorTestMove(aiCard);
+    if (!bestMove) {
+        editorTestGame.gameOver = true;
+        updateEditorTestUI();
+        return;
+    }
+    
+    const cell = bestMove;
+    
+    // Place card - start as neutral (null owner), ownership set when scoring
+    editorTestGame.board[cell.row][cell.col] = { value: aiCard, owner: null };
+    
+    // Calculate score - this will set ownership if points scored
+    const points = calculateEditorTestScore(cell.row, cell.col, aiCard, 'ai');
+    editorTestGame.aiScore += points;
+    
+    SoundEffects.playCardPlace();
+    
+    // Check for Sudden Death - first to 10 points wins!
+    const gameMode = editorTestGame.levelData.gameMode || 'classic';
+    if (gameMode === 'suddendeath' && editorTestGame.aiScore >= 10) {
+        editorTestGame.gameOver = true;
+        renderEditorTestBoard();
+        updateEditorTestUI();
+        return;
+    }
+    
+    // Check game over
+    if (isEditorTestBoardFull()) {
+        editorTestGame.gameOver = true;
+    } else {
+        editorTestGame.isPlayerTurn = true;
+    }
+    
+    renderEditorTestBoard();
+    updateEditorTestUI();
+}
+
+function calculateEditorTestScore(row, col, value, owner) {
+    let points = 0;
+    const width = editorTestGame.levelData.width;
+    const idx = row * width + col;
+    const connections = editorTestGame.connections.get(idx) || [];
+    const restrictions = editorTestGame.levelData.restrictions || {};
+    const gameMode = editorTestGame.levelData.gameMode || 'classic';
+    const isSubtraction = gameMode === 'subtraction';
+    const isScummySequences = restrictions.scummySequences || false;
+    const isGloriousZeros = restrictions.gloriousZeros || false;
+    const cellsToCapture = new Set(); // Track cells to capture ownership
+    
+    // Calculate match same and add to 10 (unless scummy sequences is on)
+    if (!isScummySequences) {
+        connections.forEach(connIdx => {
+            const connRow = Math.floor(connIdx / width);
+            const connCol = connIdx % width;
+            const connCell = editorTestGame.board[connRow][connCol];
+            
+            if (connCell.value !== null) {
+                let scored = false;
+                
+                // Match same
+                if (connCell.value === value) {
+                    // Glorious zeros: 0+0 = 10 points
+                    if (isGloriousZeros && value === 0) {
+                        points += 10;
+                    } else {
+                        points += 1;
+                    }
+                    scored = true;
+                }
+                
+                // Add to 10 (or subtract in subtraction mode)
+                if (isSubtraction) {
+                    // In subtraction mode, check if difference equals target
+                    if (Math.abs(connCell.value - value) === 10 || connCell.value - value === 10 || value - connCell.value === 10) {
+                        points += 2;
+                        scored = true;
+                    }
+                } else {
+                    if (connCell.value + value === 10) {
+                        points += 2;
+                        scored = true;
+                    }
+                }
+                
+                // Capture the cell if we scored from it
+                if (scored) {
+                    cellsToCapture.add(connIdx);
+                }
+            }
+        });
+    }
+    
+    // Sequence scoring - find all sequences including this cell
+    const sequencePoints = calculateEditorTestSequences(row, col, value);
+    points += sequencePoints;
+    
+    // Capture matched cells if we scored any points
+    if (points > 0) {
+        // The placed cell also becomes owned when scoring
+        editorTestGame.board[row][col].owner = owner;
+        
+        cellsToCapture.forEach(connIdx => {
+            const connRow = Math.floor(connIdx / width);
+            const connCol = connIdx % width;
+            editorTestGame.board[connRow][connCol].owner = owner;
+        });
+    }
+    
+    return points;
+}
+
+function calculateEditorTestSequences(row, col, value) {
+    let totalSequencePoints = 0;
+    const width = editorTestGame.levelData.width;
+    const height = editorTestGame.levelData.height;
+    const visited = new Set();
+    
+    // Try to build sequences in all directions from this cell
+    const sequences = findEditorTestSequencesFrom(row, col, value, visited);
+    
+    sequences.forEach(seq => {
+        if (seq.length >= 3) {
+            totalSequencePoints += seq.length;
+        }
+    });
+    
+    return totalSequencePoints;
+}
+
+function findEditorTestSequencesFrom(row, col, value, visited) {
+    const sequences = [];
+    const width = editorTestGame.levelData.width;
+    const height = editorTestGame.levelData.height;
+    const idx = row * width + col;
+    const connections = editorTestGame.connections.get(idx) || [];
+    
+    // For each connected cell, try to extend sequence in both directions
+    connections.forEach(connIdx => {
+        const connRow = Math.floor(connIdx / width);
+        const connCol = connIdx % width;
+        const connCell = editorTestGame.board[connRow][connCol];
+        
+        if (connCell.value === null) return;
+        
+        const diff = connCell.value - value;
+        if (Math.abs(diff) !== 1) return;
+        
+        // Found a neighbor that differs by 1, try to build a sequence
+        const seqKey = `${Math.min(idx, connIdx)}-${Math.max(idx, connIdx)}-${diff > 0 ? 'asc' : 'desc'}`;
+        if (visited.has(seqKey)) return;
+        visited.add(seqKey);
+        
+        // Build sequence in this direction
+        const sequence = [value];
+        let currentIdx = idx;
+        let currentVal = value;
+        
+        // Extend forward
+        let nextIdx = connIdx;
+        let nextVal = connCell.value;
+        while (nextVal !== null && Math.abs(nextVal - currentVal) === 1 && nextVal - currentVal === diff) {
+            sequence.push(nextVal);
+            currentIdx = nextIdx;
+            currentVal = nextVal;
+            
+            // Find next in sequence
+            const nextConns = editorTestGame.connections.get(currentIdx) || [];
+            let found = false;
+            for (const nc of nextConns) {
+                if (nc === currentIdx) continue;
+                const ncRow = Math.floor(nc / width);
+                const ncCol = nc % width;
+                const ncCell = editorTestGame.board[ncRow][ncCol];
+                if (ncCell.value !== null && ncCell.value - currentVal === diff) {
+                    nextIdx = nc;
+                    nextVal = ncCell.value;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) break;
+        }
+        
+        // Extend backward
+        currentIdx = idx;
+        currentVal = value;
+        let prevConns = editorTestGame.connections.get(currentIdx) || [];
+        for (const pc of prevConns) {
+            if (pc === connIdx) continue;
+            const pcRow = Math.floor(pc / width);
+            const pcCol = pc % width;
+            const pcCell = editorTestGame.board[pcRow][pcCol];
+            if (pcCell.value !== null && currentVal - pcCell.value === diff) {
+                // Extend backward
+                let backIdx = pc;
+                let backVal = pcCell.value;
+                while (backVal !== null) {
+                    sequence.unshift(backVal);
+                    currentIdx = backIdx;
+                    currentVal = backVal;
+                    
+                    const backConns = editorTestGame.connections.get(currentIdx) || [];
+                    let found = false;
+                    for (const bc of backConns) {
+                        const bcRow = Math.floor(bc / width);
+                        const bcCol = bc % width;
+                        const bcCell = editorTestGame.board[bcRow][bcCol];
+                        if (bcCell.value !== null && currentVal - bcCell.value === diff) {
+                            backIdx = bc;
+                            backVal = bcCell.value;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) break;
+                }
+                break;
+            }
+        }
+        
+        if (sequence.length >= 3) {
+            sequences.push(sequence);
+        }
+    });
+    
+    return sequences;
+}
+
+function isEditorTestBoardFull() {
+    for (let r = 0; r < editorTestGame.levelData.height; r++) {
+        for (let c = 0; c < editorTestGame.levelData.width; c++) {
+            if (editorTestGame.board[r][c].value === null) return false;
+        }
+    }
+    return true;
+}
+
+// ==================== EXPORT/IMPORT FUNCTIONS ====================
+function exportCustomLevel() {
+    // Check if player has enough creator points
+    if (creatorPoints < 1) {
+        alert('Not enough Creator Points! Need 1 ⭐ to export.');
+        return;
+    }
+    
+    // Deduct cost
+    creatorPoints -= 1;
+    creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+    saveCreatorData();
+    document.getElementById('creatorCreatorPoints').textContent = creatorPoints.toFixed(1);
+    
+    const levelData = {
+        version: '1.0',
+        type: 'custom-level',
+        exportDate: new Date().toISOString(),
+        width: editorWidth,
+        height: editorHeight,
+        paths: Array.from(editorPaths),
+        gameMode: document.getElementById('editorGameMode').value,
+        aiDifficulty: document.getElementById('editorAIDifficulty').value,
+        restrictions: getEditorRestrictions(),
+        iconPack: editorIconPack
+    };
+    
+    const blob = new Blob([JSON.stringify(levelData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `custom-level-${editorWidth}x${editorHeight}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    SoundEffects.playButton();
+}
+
+function importCustomLevel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check if player has enough creator points
+    if (creatorPoints < 0.5) {
+        alert('Not enough Creator Points! Need 0.5 ⭐ to import.');
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (data.type !== 'custom-level') {
+                alert('This is not a valid custom level file!');
+                return;
+            }
+            
+            // Deduct cost
+            creatorPoints -= 0.5;
+            creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+            saveCreatorData();
+            document.getElementById('creatorCreatorPoints').textContent = creatorPoints.toFixed(1);
+            
+            // Load level data
+            editorWidth = data.width || 5;
+            editorHeight = data.height || 5;
+            document.getElementById('editorWidth').value = editorWidth;
+            document.getElementById('editorHeight').value = editorHeight;
+            
+            editorPaths = new Set(data.paths || []);
+            
+            // Set game mode
+            const modeSelect = document.getElementById('editorGameMode');
+            if (data.gameMode) {
+                modeSelect.value = data.gameMode;
+            }
+            
+            // Set AI difficulty
+            const difficultySelect = document.getElementById('editorAIDifficulty');
+            if (data.aiDifficulty && difficultySelect) {
+                difficultySelect.value = data.aiDifficulty;
+            }
+            
+            // Set restrictions
+            if (data.restrictions) {
+                document.getElementById('restrictNoBonus').checked = data.restrictions.noBonus || false;
+                document.getElementById('restrictAIFirst').checked = data.restrictions.aiFirst || false;
+                document.getElementById('restrictSurvival').checked = data.restrictions.survival || false;
+                document.getElementById('restrictScummySeq').checked = data.restrictions.scummySequences || false;
+                document.getElementById('restrictGloriousZeros').checked = data.restrictions.gloriousZeros || false;
+            }
+            
+            // Set icon pack
+            if (data.iconPack) {
+                editorIconPack = data.iconPack;
+                const iconPackSelect = document.getElementById('editorIconPack');
+                if (iconPackSelect) {
+                    iconPackSelect.value = data.iconPack;
+                }
+            }
+            
+            updateEditorBoard();
+            updateEditorInfo();
+            SoundEffects.playUnlock();
+            
+        } catch (err) {
+            alert('Error reading level file: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    
+    event.target.value = '';
+}
+
+// Import level into player area (from settings)
+let loadedCustomLevel = null;
+
+function importLevelToPlayer(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check if player has enough creator points
+    if (creatorPoints < 0.5) {
+        alert('Not enough Creator Points! Need 0.5 ⭐ to import.');
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (data.type !== 'custom-level') {
+                alert('This is not a valid custom level file!');
+                return;
+            }
+            
+            // Deduct cost
+            creatorPoints -= 0.5;
+            creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
+            saveCreatorData();
+            
+            // Store the custom level
+            loadedCustomLevel = data;
+            
+            closeSettings();
+            
+            // Start a new game with the custom level (settings are locked)
+            game.loadCustomLevel(loadedCustomLevel);
+            
+            SoundEffects.playUnlock();
+            game.showMessage('📥 Custom level loaded! (0x multiplier)');
+            
+        } catch (err) {
+            alert('Error reading level file: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    
+    event.target.value = '';
+}
+
+// Save editor test state when closing creator center
+function saveEditorTestState() {
+    if (editorTestMode && editorTestGame) {
+        editorSavedTestState = {
+            levelData: editorTestGame.levelData,
+            board: JSON.parse(JSON.stringify(editorTestGame.board)),
+            playerScore: editorTestGame.playerScore,
+            aiScore: editorTestGame.aiScore,
+            currentCard: editorTestGame.currentCard,
+            nextCard: editorTestGame.nextCard,
+            isPlayerTurn: editorTestGame.isPlayerTurn,
+            gameOver: editorTestGame.gameOver
+        };
+    }
+}
+
+// Restore saved test state
+function restoreEditorTestState() {
+    if (editorSavedTestState) {
+        editorTestGame = {
+            ...editorSavedTestState,
+            connections: buildConnectionsFromPaths(
+                editorSavedTestState.levelData.paths, 
+                editorSavedTestState.levelData.width, 
+                editorSavedTestState.levelData.height
+            )
+        };
+        editorTestMode = true;
+        
+        // Update UI
+        const btn = document.getElementById('editorTestBtn');
+        btn.innerHTML = '⏹️ Stop Game <span class="cost-badge">Free</span>';
+        btn.classList.add('testing');
+        
+        document.querySelector('.level-editor-left').classList.add('testing');
+        document.querySelector('.level-editor-center').classList.add('testing');
+        document.getElementById('editorTestSection').style.display = 'block';
+        
+        renderEditorTestBoard();
+        updateEditorTestUI();
+        
+        editorSavedTestState = null;
+        return true;
+    }
+    return false;
+}
+
+// Initialize editor when creator center is opened with unlocked features
+function initEditorOnOpen() {
+    if (creatorCenterUnlocked && document.getElementById('editorBoard')) {
+        initLevelEditor();
     }
 }

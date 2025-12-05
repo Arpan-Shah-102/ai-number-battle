@@ -7,17 +7,22 @@ https://arpan-shah-102.github.io/ai-number-battle
 
 ## ✨ What's New
 
+- **🎨 Level Editor** - Create and share custom levels! Design board layouts, choose paths, and test your creations
+- **📤 Export/Import** - Share levels with codes, import from others, play custom levels (icon packs locked for imports)
+- **🧪 Test Game Mode** - Test your custom levels with full game mode support and bonus point animations
+- **🔧 Bug Fixes** - Fixed floating point precision issues with Creator Points display
+- **🎡 Roulette** - New casino game! Pick colors (2x) or numbers (10x), Green pays 14x! (567 pts)
+- **✨ Creator Center** - Secret area with level editing tools (hint in tutorial!)
+- **📜 Quests System** - Complete quests to earn Creator Points
+- **💰 Floating Points** - Points display now visible in shop and casino at all times
+- **🎨 Theme Updates** - Cosmic and Midnight themes now more visually distinct
+- **🔧 UI Improvements** - Better shop layout, back button in casino, centered icon packs
+- **🛡️ Easter Egg Limits** - Secret bonuses now limited to prevent exploitation
 - **🎮 AI vs AI Controls** - Start/Pause/Resume button for watching AI battles
 - **📐 10x10 Board** - Now available on all devices (warning shown on small screens)
 - **🎭 Icon Pack Multipliers** - Shown in settings; Moon (0.9x) and Dice (0.8x) give reduced points
 - **🎨 Centered Layout** - Game centers on large screens for better viewing
-- **🏛️ Roman Numerals Fix** - Now displays 0-IX matching actual values (no more confusing matches)
-- **🎲 Dice Icons** - Fixed proper mapping to dice faces
-- **🎰 5 Casino Games** - Coin Flip (15 pts), Slots (35 pts), Higher/Lower (70 pts), Blackjack (150 pts), Dice Duel (250 pts)
-- **🎨 New Themes** - Meme Theme (67 pts), Money Theme (77 pts) with gradient previews
-- **⏱️ Time Trials Pause** - Timer slows 10x when in menus
-- **🛡️ Survival Mode** - Moved to Restrictions (25 pts, 1.2x multiplier)
-- **🤖 AI vs AI Mode** - Watch two AIs battle with start/pause controls!
+- **🎰 6 Casino Games** - Coin Flip (15 pts), Slots (35 pts), Higher/Lower (70 pts), Blackjack (150 pts), Dice Duel (250 pts), Roulette (567 pts)
 
 ## 🎮 How to Play
 
@@ -119,6 +124,7 @@ Click the **🎲 dice icons** in the game title to open the Casino! Gamble your 
 | 🎯 **Higher/Lower** | 70 pts | 1.5x | Guess if hidden number is higher or lower |
 | 🃏 **Blackjack** | 150 pts | 2x | Beat the dealer! Get closer to 21 without busting |
 | 🎲 **Dice Duel** | 250 pts | 2x | Roll two dice vs dealer - highest total wins! |
+| 🎡 **Roulette** | 567 pts | Varies | Bet on colors or numbers - spin the wheel! |
 
 > Games are displayed in price order. Unlockable games show a **green glow** when you can afford them!
 
@@ -152,7 +158,110 @@ Click the **🎲 dice icons** in the game title to open the Casino! Gamble your 
 - Higher total wins = **2x your bet** returned
 - Ties return your bet
 
+### Roulette
+- Simplified casino roulette wheel with 10 numbers (0-9)
+- Choose your bet type: **Color** (Red/Black/Green) or **Number** (0-9)
+- Color bets pay **2x** your wager (Green pays **14x**)
+- Number bets pay **10x** your wager
+- Watch the animated wheel spin!
+- 0 is green, odd numbers are red, even numbers are black
+
 > **Tip:** Use the "Max" button to bet all your points at once!
+
+## ✨ Creator Center
+
+A hidden feature for dedicated players! Unlock the ability to create and share custom levels.
+
+### How to Unlock
+1. Click on the **AI Score** display
+2. Within 5 seconds, click on the **Player Score** display
+3. Within 5 seconds, click on the **Current Card** display
+4. The Creator Center will open!
+
+> **Tip:** The tutorial mentions this secret sequence!
+
+### Requirements
+- **500 Shop Points** to access Creator Center features
+- **1 Creator Point** to unlock special abilities
+- Creator Points are earned through the **Quests** system
+
+### Level Editor
+Once unlocked, you can create custom levels:
+
+#### Left Panel - Level Settings
+- **Board Size**: Choose dimensions from 2x2 to 8x8
+- **Game Mode**: Select any game mode (Classic, Blitz, Subtraction, etc.)
+- **AI Difficulty**: Set the AI from Novice to Master
+- **Restrictions**: Toggle any restrictions (AI First, Glorious Zeros, etc.)
+
+#### Center - Board Editor
+- **Click and drag** between cells to draw paths
+- **Click existing paths** to remove them
+- Paths must connect horizontally or vertically adjacent cells
+- All cells should be reachable through paths
+
+#### Right Panel - Level Actions
+- **Icon Pack**: Preview different icon packs in test mode
+- **Test Game**: Play your level with the current settings
+- **Clear All**: Remove all paths and reset the board
+- **Export Level**: Save your level to a shareable code (costs 1 ⭐)
+- **Import Level**: Load a level from a code
+
+### Test Game Features
+- Cells are colored **green (player)**, **red (AI)**, or **gray (neutral)** based on ownership
+- **Full AI difficulty support** - AI intelligence scales from Novice to Master
+- **All game modes work**:
+  - Sudden Death: First to 10 points wins
+  - Reverse Rules: Lower score wins, AI tries to minimize scoring
+  - Territorial: Final score = owned cell count
+  - Subtraction: Numbers subtract instead of add
+- **All restrictions apply**: AI First, No Bonus, Scummy Sequences, Glorious Zeros
+- Scoring includes same matches, add-to-10, and sequences
+- End-game bonus points flash with a golden animation
+- **Left-click drag** to draw paths, **right-click drag** to erase (tool toggles behavior)
+
+### Exporting Levels
+- Export costs **1 Creator Point** per export
+- Creates a JSON level file
+- Includes board size, paths, game mode, AI difficulty, and restrictions
+
+### Importing Levels
+- Paste a level code to import (costs 0.5 ⭐)
+- **In Editor**: Load the level for editing/testing
+- **In Player Mode**: Load as a custom level to play (shows "Custom Level" indicator, settings and icon packs are locked)
+
+### Developer Secrets
+There are hidden developer bonuses in the Creator Center:
+- Click the **Creator Center title** 15 times within 3 seconds
+- Click the **Level Editor title** 15 times within 3 seconds
+- Each grants **+1000 Shop Points** and **+5 Creator Points**!
+
+## 📋 Quests
+
+Earn Creator Points by completing quests!
+
+### How It Works
+- Access Quests via the **Quests** button below Shop
+- **3 random quests** are available at a time (picked from 12 possible quests)
+- Each quest tracks your progress with a progress bar
+- Claim **1-2 Creator Points** when a quest is complete
+- **Refresh** quests for 5 points (if you want different ones)
+
+### Quest Types
+| Quest | Goal | Reward |
+|-------|------|--------|
+| Point Collector | Earn 1,000 points | 1 Creator Point |
+| Card Shark | Play Blackjack 3 times | 1 Creator Point |
+| Speed Runner | Play Time Trials 3 times | 1 Creator Point |
+| Lucky Streak | Win 3 casino games in a row | 1 Creator Point |
+| High Roller | Bet 500+ points in one casino game | 1 Creator Point |
+| Marathon Player | Play 10 games in one session | 1 Creator Point |
+| Casino Regular | Win 5 casino games | 1 Creator Point |
+| Jackpot Hunter | Hit the slots jackpot | 2 Creator Points |
+| Blitz Champion | Win 3 Blitz mode games | 1 Creator Point |
+| Points Master | Earn 5,000 points total | 2 Creator Points |
+| Blackjack Pro | Play Blackjack 10 times | 2 Creator Points |
+| Time Trial Expert | Play Time Trials 10 times | 2 Creator Points |
 
 ## 🤖 AI Difficulty Levels
 
@@ -192,7 +301,7 @@ Click the **🎲 dice icons** in the game title to open the Casino! Gamble your 
 | **Font** | 10 pts | 1.0x | Stylized Orbitron font |
 | **Moon** | 25 pts | 0.9x | Moon phases (🌑-🌘) |
 | **Dice** | 40 pts | 0.8x | Dice faces (⚀-⚅) |
-| **Roman** | 55 pts | 1.0x | Roman numerals (I-X) |
+| **Roman** | 55 pts | 1.15x | Roman numerals (I-X) |
 
 > **Note:** Some icon packs have reduced point multipliers as a trade-off for their unique visuals!
 

@@ -13,7 +13,7 @@
             <header>
                 <h1><span class="dice-clickable" onclick="openGambling()"><span class="dice-glow"></span>🎲</span> Number Battle <span class="dice-clickable" onclick="openGambling()"><span class="dice-glow"></span>🎲</span></h1>
                 <div class="header-controls">
-                    <button onclick="toggleRules()" class="info">📜 Show/Hide Rules</button>
+                    <button onclick="showStats()" class="info">📊 Statistics</button>
                     <button onclick="startTutorial()" class="warning">🎓 Tutorial</button>
                 </div>
             </header>
@@ -47,8 +47,8 @@
                     <div class="controls">
                         <button onclick="game.newGame()">🔄 New Game</button>
                         <button onclick="showSettings()" class="secondary">⚙️ Settings</button>
-                        <button onclick="showStats()" class="info">📊 Statistics</button>
                         <button onclick="showShop()" class="warning">🛒 Shop</button>
+                        <button onclick="showQuests()" class="info" id="questsBtn" style="display: none;">📜 Quests</button>
                     </div>
                 </div>
 
@@ -291,6 +291,18 @@
                     </label>
                 </div>
 
+                <!-- Import Section (only visible when creator center unlocked) -->
+                <div class="setting-group creator-only-setting" id="importExportSection" style="display: none; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px;">
+                    <h3 style="margin-bottom: 15px;">📦 Import Level</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                        <label class="import-export-btn import-label-btn" style="font-weight: bold;">
+                            📥 Import Level <span class="cost-badge">0.5 ⭐</span>
+                            <input type="file" accept=".json" onchange="importLevelToPlayer(event)" style="display: none;">
+                        </label>
+                    </div>
+                    <p style="color: #888; font-size: 0.8em; margin-top: 10px;">Import a custom level to play with 0x multiplier.</p>
+                </div>
+
                 <div class="modal-buttons">
                     <button onclick="closeSettings()">Close</button>
                 </div>
@@ -301,6 +313,11 @@
         <div class="modal" id="gamblingModal">
             <div class="modal-content">
                 <h2>🎰 Casino</h2>
+                
+                <!-- Floating points display -->
+                <div class="floating-points-badge" id="casinoFloatingPoints">
+                    💰 <span id="casinoPointsBadge">0</span>
+                </div>
                 
                 <div class="shop-points-display">
                     <div class="points-label">Your Shop Points</div>
@@ -577,9 +594,9 @@
                         <p style="color: #666; margin-bottom: 15px;">Pick a bet type and spin the wheel!</p>
                         
                         <div class="roulette-container">
+                            <div class="roulette-pointer"></div>
                             <div class="roulette-wheel" id="rouletteWheel">
-                                <div class="roulette-ball" id="rouletteBall"></div>
-                                <div class="roulette-center">🎡</div>
+                                <div class="roulette-center">🎯</div>
                             </div>
                             <div class="roulette-result" id="rouletteNumber">?</div>
                         </div>
@@ -636,6 +653,7 @@
                 </div>
 
                 <div class="modal-buttons">
+                    <button onclick="backToCasinoMenu()" class="secondary">↩️ Back to Games</button>
                     <button onclick="closeGambling()">Close</button>
                 </div>
             </div>
@@ -667,6 +685,10 @@
                         <div class="stat-label">Shop Points</div>
                         <div class="stat-value" id="shopPointsStat">0</div>
                     </div>
+                    <div class="stat-box" id="creatorPointsStatBox" style="display: none;">
+                        <div class="stat-label">⭐ Creator Points</div>
+                        <div class="stat-value" id="creatorPointsStat">0</div>
+                    </div>
                 </div>
 
                 <h3>Win Rate</h3>
@@ -685,6 +707,11 @@
         <div class="modal" id="shopModal">
             <div class="modal-content large">
                 <h2>🛒 Shop</h2>
+                
+                <!-- Floating points display -->
+                <div class="floating-points-badge" id="shopFloatingPoints">
+                    💰 <span id="shopPointsBadge">0</span>
+                </div>
                 
                 <div class="shop-points-display">
                     <div class="points-label">Your Shop Points</div>
@@ -823,6 +850,208 @@
             <div id="unlockMessage" style="margin: 15px 0; font-weight: bold; color: #FF9800;"></div>
             <div id="shopPointsEarned" style="margin: 15px 0; font-weight: bold; color: #FFD700;"></div>
             <button onclick="game.newGame()">Play Again</button>
+        </div>
+
+        <!-- Creator Center (Secret) -->
+        <div class="creator-center hidden" id="creatorCenter">
+            <div class="creator-overlay"></div>
+            <div class="creator-content">
+                <!-- Points display -->
+                <div class="creator-points-display">
+                    <div class="creator-points-item">
+                        <span class="points-icon">💰</span>
+                        <span id="creatorShopPoints">0</span> Shop Pts
+                    </div>
+                    <div class="creator-points-item">
+                        <span class="points-icon">⭐</span>
+                        <span id="creatorCreatorPoints">0</span> Creator Pts
+                    </div>
+                </div>
+                
+                <!-- Lock message panel -->
+                <div class="creator-lock-panel" id="creatorLockPanel">
+                    <h2>✨ Creator Center ✨</h2>
+                    <p class="creator-lock-message">To unlock, you must gather <strong>500 points</strong> and <strong>1 creator point</strong> to use.</p>
+                    <p class="creator-lock-hint">To obtain creator points, go to the "Quests" menu beneath the shop.</p>
+                    <button class="creator-unlock-btn" id="creatorUnlockBtn" onclick="tryUnlockCreatorCenter()" disabled>🔓 Unlock</button>
+                </div>
+                
+                <!-- Unlocked features area (hidden until unlocked) -->
+                <div class="creator-features" id="creatorFeatures" style="display: none;">
+                    <h2 id="levelEditorTitle">✨ Level Editor ✨</h2>
+                    
+                    <div class="level-editor-container">
+                        <!-- Left Panel - Tools -->
+                        <div class="level-editor-left">
+                            <div class="editor-section">
+                                <h4>📐 Board Size</h4>
+                                <div class="editor-input-group">
+                                    <label>Width:</label>
+                                    <input type="number" id="editorWidth" value="5" min="3" max="10" onchange="updateEditorBoard()">
+                                </div>
+                                <div class="editor-input-group">
+                                    <label>Height:</label>
+                                    <input type="number" id="editorHeight" value="5" min="3" max="10" onchange="updateEditorBoard()">
+                                </div>
+                            </div>
+                            
+                            <div class="editor-section">
+                                <h4>🔗 Path Tools</h4>
+                                <div class="editor-tool-buttons">
+                                    <button id="toolConnect" class="editor-tool-btn active" onclick="setEditorTool('connect')">🔗 Connect</button>
+                                    <button id="toolRemove" class="editor-tool-btn" onclick="setEditorTool('remove')">✂️ Remove</button>
+                                </div>
+                                <button class="editor-action-btn" onclick="connectAllPaths()">🔗 Connect All</button>
+                                <button class="editor-action-btn" onclick="randomizeEditorPaths()">🎲 Randomize</button>
+                                <button class="editor-action-btn" onclick="clearAllPaths()">🗑️ Clear All</button>
+                            </div>
+                            
+                            <div class="editor-section">
+                                <h4>🎮 Game Mode</h4>
+                                <select id="editorGameMode" class="editor-select">
+                                    <option value="classic">Classic</option>
+                                    <option value="blitz">Blitz</option>
+                                    <option value="suddenDeath">Sudden Death</option>
+                                    <option value="chainReaction">Chain Reaction</option>
+                                    <option value="reverseRules">Reverse Rules</option>
+                                    <option value="mirrorMatch">Mirror Match</option>
+                                    <option value="subtraction">Subtraction</option>
+                                    <option value="timeTrials">Time Trials</option>
+                                    <option value="luckyEnd">Ludicrously Lucky</option>
+                                    <option value="fogOfWar">Fog of War</option>
+                                    <option value="territorial">Territorial</option>
+                                </select>
+                            </div>
+                            
+                            <div class="editor-section">
+                                <h4>🤖 AI Difficulty</h4>
+                                <select id="editorAIDifficulty" class="editor-select">
+                                    <option value="novice">Novice</option>
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate" selected>Intermediate</option>
+                                    <option value="skilled">Skilled</option>
+                                    <option value="advanced">Advanced</option>
+                                    <option value="expert">Expert</option>
+                                    <option value="pro">Pro</option>
+                                    <option value="master">Master</option>
+                                </select>
+                            </div>
+                            
+                            <div class="editor-section">
+                                <h4>🔒 Restrictions</h4>
+                                <div class="editor-restrictions">
+                                    <label class="editor-checkbox">
+                                        <input type="checkbox" id="restrictNoBonus"> No Bonus Points
+                                    </label>
+                                    <label class="editor-checkbox">
+                                        <input type="checkbox" id="restrictAIFirst"> AI First
+                                    </label>
+                                    <label class="editor-checkbox">
+                                        <input type="checkbox" id="restrictSurvival"> Survival Mode
+                                    </label>
+                                    <label class="editor-checkbox">
+                                        <input type="checkbox" id="restrictScummySeq"> Scummy Sequences
+                                    </label>
+                                    <label class="editor-checkbox">
+                                        <input type="checkbox" id="restrictGloriousZeros"> Glorious Zeros
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Center - Game Board Preview -->
+                        <div class="level-editor-center">
+                            <div class="editor-board-container">
+                                <div class="editor-board" id="editorBoard">
+                                    <!-- Board cells generated by JS -->
+                                </div>
+                            </div>
+                            <p class="editor-hint">Click and drag between cells to connect/remove paths</p>
+                        </div>
+                        
+                        <!-- Right Panel - Info, Actions, and Test Game -->
+                        <div class="level-editor-right">
+                            <!-- Level Actions -->
+                            <div class="editor-section">
+                                <h4>💾 Level Actions</h4>
+                                <button class="editor-primary-btn" id="editorTestBtn" onclick="toggleEditorTest()">▶️ Test Game <span class="cost-badge">0.1 ⭐</span></button>
+                                <button class="editor-action-btn" onclick="exportCustomLevel()">📤 Export Level <span class="cost-badge">1 ⭐</span></button>
+                                <label class="editor-action-btn editor-import-label" style="font-weight: bold;">
+                                    📥 Import Level <span class="cost-badge">0.5 ⭐</span>
+                                    <input type="file" accept=".json" onchange="importCustomLevel(event)" style="display: none;">
+                                </label>
+                            </div>
+                            
+                            <!-- Test Game Card Display (hidden by default) -->
+                            <div class="editor-section editor-test-section" id="editorTestSection" style="display: none;">
+                                <h4>🎮 Test Game</h4>
+                                <div class="editor-test-card-container">
+                                    <div class="editor-test-card" id="editorTestCard">?</div>
+                                </div>
+                                <div class="editor-test-score">
+                                    <div>You: <span id="editorTestPlayerScore">0</span></div>
+                                    <div>AI: <span id="editorTestAIScore">0</span></div>
+                                </div>
+                                <div class="editor-test-message" id="editorTestMessage">Your turn!</div>
+                            </div>
+                            
+                            <!-- Icon Pack Selector -->
+                            <div class="editor-section">
+                                <h4>🎭 Icon Pack</h4>
+                                <select id="editorIconPack" class="editor-select" onchange="updateEditorIconPack()">
+                                    <option value="default">Default (0-9)</option>
+                                    <option value="emoji">Emoji (0️⃣-9️⃣)</option>
+                                    <option value="font">Font (Orbitron)</option>
+                                    <option value="moon">Moon Phases 🌙</option>
+                                    <option value="dice">Dice ⚀-⚅</option>
+                                    <option value="roman">Roman (I-X)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="editor-section">
+                                <h4>📊 Level Info</h4>
+                                <div class="editor-info">
+                                    <div>Size: <span id="editorInfoSize">5x5</span></div>
+                                    <div>Paths: <span id="editorInfoPaths">0</span></div>
+                                    <div>Mode: <span id="editorInfoMode">Classic</span></div>
+                                    <div>AI: <span id="editorInfoAI">Intermediate</span></div>
+                                    <div>Restrictions: <span id="editorInfoRestrictions">None</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="creator-back-btn" onclick="closeCreatorCenter()">← Go Back</button>
+            </div>
+        </div>
+
+        <!-- Quests Modal -->
+        <div class="modal" id="questsModal">
+            <div class="modal-content">
+                <h2>📜 Quests</h2>
+                
+                <!-- Floating points display -->
+                <div class="floating-points-badge" id="questsFloatingPoints">
+                    💰 <span id="questsPointsBadge">0</span>
+                </div>
+                
+                <div class="quests-header">
+                    <div class="creator-points-small">
+                        <span class="points-icon">⭐</span>
+                        <span id="questsCreatorPoints">0</span> Creator Points
+                    </div>
+                    <button class="refresh-quests-btn" onclick="refreshQuests()">🔄 Refresh (5 pts)</button>
+                </div>
+                
+                <div class="quests-list" id="questsList">
+                    <!-- Quests will be added dynamically -->
+                </div>
+                
+                <div class="modal-buttons">
+                    <button onclick="closeQuests()">Close</button>
+                </div>
+            </div>
         </div>
 
         <script src="./script.js"></script>
