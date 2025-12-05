@@ -407,6 +407,7 @@ h1 {
   transition: all 0.3s;
   cursor: pointer;
   touch-action: none;
+  margin: 1px;
 }
 
 .map-cell.empty {

@@ -204,7 +204,7 @@ function startTutorial() {
         <p style="line-height: 1.8; margin-bottom: 20px;">
             There's a hidden <strong>Creator Center</strong> with special features! To access it:
             Click <em>AI Score</em> → <em>Your Score</em> → <em>Current Card</em> (within 5 seconds each).
-            You'll need 500 Shop Points and 1 Creator Point (from Quests) to unlock its features.
+            You'll need 500 Shop Points and 3 Creator Points (from Quests) to unlock its features.
         </p>
         
         <h3>🎮 Interactive Demo:</h3>
@@ -7038,14 +7038,14 @@ function setupEditorTitleSecret() {
 
 function updateCreatorUnlockButton() {
     const btn = document.getElementById('creatorUnlockBtn');
-    const canUnlock = game.shop.points >= 500 && creatorPoints >= 1;
+    const canUnlock = game.shop.points >= 500 && creatorPoints >= 3;
     btn.disabled = !canUnlock;
 }
 
 function tryUnlockCreatorCenter() {
-    if (game.shop.points >= 500 && creatorPoints >= 1) {
+    if (game.shop.points >= 500 && creatorPoints >= 3) {
         game.shop.points -= 500;
-        creatorPoints -= 1;
+        creatorPoints -= 3;
         creatorPoints = Math.round(creatorPoints * 100) / 100; // Fix floating point
         creatorCenterUnlocked = true;
         
