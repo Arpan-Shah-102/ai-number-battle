@@ -7,11 +7,28 @@ https://arpan-shah-102.github.io/ai-number-battle
 
 ## ✨ What's New
 
+- **🔧 Major Bug Fixes**:
+  - Custom level imports now properly apply board size, paths, AI difficulty, gamemode, restrictions, and icon pack
+  - Cell sizes now scale responsively for irregular/imported board dimensions
+  - Floating points display updates immediately when spending in casino, shop, or quests
+  - Quests now properly detect completion and update UI in real-time
+- **💰 Casino Improvements**:
+  - Maximum bet limit of 1,000 points per game
+  - Decimal betting support (e.g., bet 25.50 points)
+  - New "Half" button to quickly bet 50% of your points
+  - Points display shows decimals (e.g., 125.75 pts)
+- **⚡ Power-up Fixes**:
+  - Double Points powerup now shows +1.0x multiplier (not +2.0x) and disables after use
+  - Skip AI Turn and View Next Card powerups now disable after use until round ends
+  - Permanent Double Points limited to 1 purchase max
+  - Other permanent powerups capped at 99 purchases each
+- **📜 Quest System Updates**:
+  - Quest rewards (⭐) now visible in quest list
+  - Point Collector and Points Master quests now track casino earnings
+  - Quest progress bars update automatically when modal is open
 - **🎨 Level Editor** - Create and share custom levels! Design board layouts, choose paths, and test your creations
-- **📤 Export/Import** - Share levels with codes, import from others, play custom levels (icon packs locked for imports)
-- **🧪 Test Game Mode** - Test your custom levels with full game mode support and bonus point animations
-- **🔧 Bug Fixes** - Fixed floating point precision issues with Creator Points display
-- **🎡 Roulette** - New casino game! Pick colors (2x) or numbers (10x), Green pays 14x! (567 pts)
+- **📤 Export/Import** - Share levels with codes, import from others, play custom levels
+- **🎡 Roulette** - Casino game! Pick colors (2x) or numbers (10x), Green pays 14x! (567 pts)
 - **✨ Creator Center** - Secret area with level editing tools (hint in tutorial!)
 - **📜 Quests System** - Complete quests to earn Creator Points
 - **💰 Floating Points** - Points display now visible in shop and casino at all times
@@ -104,12 +121,12 @@ UX note: The Shop includes "⚙️ Go to Settings" buttons for quick navigation 
 
 | Power-up | Uses | Description |
 |----------|------|-------------|
-| **⏭️ Skip AI Turn** | 1 | Skip the AI's next turn |
+| **⏭️ Skip AI Turn** | 1 | Skip the AI's next turn (disabled until round ends) |
 | **🔄 Replace Card** | 3 | Get a new random card |
-| **👁️ View Next** | 1 | See your next card |
+| **👁️ View Next** | 1 | See your next card (disabled until round ends) |
 | **↩️ Undo Move** | 1 | Undo your last move |
 | **🎯 Pick Card** | 1 | Choose any number (0-9) |
-| **💎 Double Points** | 1 | 2x pts multiplier for the game |
+| **💎 Double Points** | 1 | +1.0x pts multiplier for the game (disabled after use) |
 
 ## 🎰 Casino
 
@@ -127,6 +144,12 @@ Click the **🎲 dice icons** in the game title to open the Casino! Gamble your 
 | 🎡 **Roulette** | 567 pts | Varies | Bet on colors or numbers - spin the wheel! |
 
 > Games are displayed in price order. Unlockable games show a **green glow** when you can afford them!
+
+**Betting Features:**
+- Maximum bet: **1,000 points** per game
+- **Decimal betting** supported (e.g., bet 25.50 points)
+- **Half button** - quickly bet 50% of your points
+- **Max button** - bet maximum (capped at 1,000)
 
 ### Coin Flip
 - Bet any amount of your shop points
@@ -248,20 +271,22 @@ Earn Creator Points by completing quests!
 - **Refresh** quests for 5 points (if you want different ones)
 
 ### Quest Types
-| Quest | Goal | Reward |
-|-------|------|--------|
-| Point Collector | Earn 1,000 points | 1 Creator Point |
-| Card Shark | Play Blackjack 3 times | 1 Creator Point |
-| Speed Runner | Play Time Trials 3 times | 1 Creator Point |
-| Lucky Streak | Win 3 casino games in a row | 1 Creator Point |
-| High Roller | Bet 500+ points in one casino game | 1 Creator Point |
-| Marathon Player | Play 10 games in one session | 1 Creator Point |
-| Casino Regular | Win 5 casino games | 1 Creator Point |
-| Jackpot Hunter | Hit the slots jackpot | 2 Creator Points |
-| Blitz Champion | Win 3 Blitz mode games | 1 Creator Point |
-| Points Master | Earn 5,000 points total | 2 Creator Points |
-| Blackjack Pro | Play Blackjack 10 times | 2 Creator Points |
-| Time Trial Expert | Play Time Trials 10 times | 2 Creator Points |
+| Quest | Goal | Reward | Notes |
+|-------|------|--------|-------|
+| Point Collector | Earn 1,000 points | 1⭐ | Includes casino earnings |
+| Card Shark | Play Blackjack 3 times | 1⭐ | |
+| Speed Runner | Play Time Trials 3 times | 1⭐ | |
+| Lucky Streak | Win 3 casino games in a row | 1⭐ | |
+| High Roller | Bet 500+ points in one casino game | 1⭐ | |
+| Marathon Player | Play 10 games in one session | 1⭐ | |
+| Casino Regular | Win 5 casino games | 1⭐ | |
+| Jackpot Hunter | Hit the slots jackpot | 2⭐ | |
+| Blitz Champion | Win 3 Blitz mode games | 1⭐ | |
+| Points Master | Earn 5,000 points total | 2⭐ | Includes casino earnings |
+| Blackjack Pro | Play Blackjack 10 times | 2⭐ | |
+| Time Trial Expert | Play Time Trials 10 times | 2⭐ | |
+
+> Quest rewards are now visible in the quest list! Progress bars update in real-time when the quest modal is open.
 
 ## 🤖 AI Difficulty Levels
 
@@ -353,6 +378,39 @@ Touch controls are supported for mobile devices.
 3. **Claim territory early** - More owned cells = bigger end bonus
 4. **Use power-ups wisely** - Save them for critical moments
 5. **Try different modes** - Each mode requires different strategies
+
+## 🔧 Recent Fixes & Improvements
+
+### Custom Level Importing
+- Custom levels now properly apply all settings: board size, paths, AI difficulty, gamemode, restrictions, and icon pack
+- Cell sizes scale responsively for irregular board dimensions (e.g., 7x5 boards)
+- Fixed issue where imported levels wouldn't work correctly
+
+### Casino System
+- Added 1,000 point maximum bet limit to prevent excessive betting
+- Decimal betting support - bet fractions like 25.50 points
+- New "Half" button to quickly bet 50% of your points
+- Floating points display now updates immediately when spending
+- All point displays show decimals for precision
+
+### Power-ups
+- **Double Points**: Now correctly shows +1.0x multiplier (not +2.0x), disables after use
+- **Skip AI Turn**: Disables after use until the round ends (prevents spam)
+- **View Next Card**: Disables after use until the round ends
+- **Permanent Double Points**: Limited to 1 purchase maximum
+- **Other Permanent Power-ups**: Capped at 99 purchases each
+- Shop now shows max limits and disables buttons when caps are reached
+
+### Quest System
+- Quest rewards (⭐) now visible in quest titles and claim buttons
+- Point Collector and Points Master quests now track casino earnings
+- Quest progress bars update in real-time when modal is open
+- Fixed completion detection issues
+
+### UI/UX Improvements
+- Removed alert popups from permanent purchases (replaced with in-game messages)
+- Floating points badges in casino/shop/quests modals update instantly
+- Better feedback when hitting purchase limits
 
 ## 📝 License
 

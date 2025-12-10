@@ -1,3 +1,19 @@
+// Helper function to format numbers with commas and tenths place
+function formatPoints(num) {
+    const rounded = Math.round(num * 10) / 10;
+    const [whole, decimal] = rounded.toFixed(1).split('.');
+    const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${withCommas}.${decimal}`;
+}
+
+// Helper function to format numbers with commas and tenths place
+function formatPoints(num) {
+    const rounded = Math.round(num * 10) / 10;
+    const [whole, decimal] = rounded.toFixed(1).split('.');
+    const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${withCommas}.${decimal}`;
+}
+
 // Sound Effects with AudioContext for better consistency
 const SoundEffects = {
     enabled: true,
@@ -882,7 +898,7 @@ class NumberConnectionGame {
             subtraction: 1.5,
             timetrials: 1.35,
             ludicrouslylucky: 2.5,
-            fogofwar: 1.5,
+            fogofwar: 1.3,
             territorial: 1.6
         };
 
@@ -1388,7 +1404,7 @@ class NumberConnectionGame {
         document.getElementById('tiesCount').textContent = this.stats.ties;
         document.getElementById('highScore').textContent = this.stats.highScore;
         // Ensure shop points are displayed accurately from the shop object
-        document.getElementById('shopPointsStat').textContent = this.shop.points.toFixed(1);
+        document.getElementById('shopPointsStat').textContent = formatPoints(this.shop.points);
         
         const totalGames = this.stats.wins + this.stats.losses + this.stats.ties;
         const winRate = totalGames > 0 ? Math.round((this.stats.wins / totalGames) * 100) : 0;
@@ -1921,6 +1937,7 @@ class NumberConnectionGame {
         if (this.doublePointsAvailable > 0 && this.isPlayerTurn && !this.gameEnded && 
             this.gameMode !== 'survival' && !this.doublePointsActive) {
             this.doublePointsAvailable--;
+            this.doublePointsConsumable--; // Disable until game ends
             this.useConsumablePowerup('doublePoints');
             this.doublePointsActive = true;
             
@@ -1942,6 +1959,7 @@ class NumberConnectionGame {
     useViewNext() {
         if (this.viewNextAvailable > 0 && !this.gameEnded && this.gameMode !== 'survival' && this.playerDeck.length > 0 && this.isPlayerTurn) {
             this.viewNextAvailable--;
+            this.viewNextConsumable--; // Disable until round ends
             this.useConsumablePowerup('viewNext'); // FIXED
             this.viewNextActive = true;
             this.viewNextUsedOnTurn = this.turnCount;
@@ -1960,6 +1978,7 @@ class NumberConnectionGame {
     useSkipAI() {
         if (this.skipAIAvailable > 0 && this.isPlayerTurn && !this.gameEnded && this.gameMode !== 'survival' && this.gameMode !== 'blitz') {
             this.skipAIAvailable--;
+            this.skipAIConsumable--; // Disable until round ends
             this.useConsumablePowerup('skipAI'); // FIXED
             this.skipAIUsed = true;
             this.updatePowerupDisplay();
@@ -2283,29 +2302,33 @@ class NumberConnectionGame {
         }
         
         // NEW: Handle custom level paths from level editor
-        if (this.customLevelLoaded && this.customPaths && this.customPaths.length > 0) {
-            // Build connections from custom paths (format: "row1,col1-row2,col2")
-            for (const pathStr of this.customPaths) {
-                const parts = pathStr.split('-');
-                if (parts.length !== 2) continue;
-                
-                const [r1, c1] = parts[0].split(',').map(Number);
-                const [r2, c2] = parts[1].split(',').map(Number);
-                
-                // Convert row,col to cell index
-                const from = r1 * this.gridSize + c1;
-                const to = r2 * this.gridSize + c2;
-                
-                // Validate cells are within bounds
-                if (from >= 0 && from < this.totalCells && to >= 0 && to < this.totalCells) {
-                    // Check if connection already exists
-                    if (!adjacencyList.get(from).includes(to)) {
-                        this.connections.push({ from: from, to: to });
-                        adjacencyList.get(from).push(to);
-                        adjacencyList.get(to).push(from);
+        if (this.customLevelLoaded && this.customPaths !== undefined) {
+            // If custom paths exist, build connections from them
+            if (this.customPaths.length > 0) {
+                // Build connections from custom paths (format: "row1,col1-row2,col2")
+                for (const pathStr of this.customPaths) {
+                    const parts = pathStr.split('-');
+                    if (parts.length !== 2) continue;
+                    
+                    const [r1, c1] = parts[0].split(',').map(Number);
+                    const [r2, c2] = parts[1].split(',').map(Number);
+                    
+                    // Convert row,col to cell index
+                    const from = r1 * this.gridSize + c1;
+                    const to = r2 * this.gridSize + c2;
+                    
+                    // Validate cells are within bounds
+                    if (from >= 0 && from < this.totalCells && to >= 0 && to < this.totalCells) {
+                        // Check if connection already exists
+                        if (!adjacencyList.get(from).includes(to)) {
+                            this.connections.push({ from: from, to: to });
+                            adjacencyList.get(from).push(to);
+                            adjacencyList.get(to).push(from);
+                        }
                     }
                 }
             }
+            // If customPaths is empty array, leave connections empty (no paths)
             // Reset custom level flag after applying paths
             this.customLevelLoaded = false;
             this.customPaths = [];
@@ -2787,7 +2810,7 @@ class NumberConnectionGame {
     updateMultiplierDisplay() {
         const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
         const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
-        const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
+        const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0; // Changed from 2.0 to 1.0
         const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
         const iconPackMultiplier = IconPackMultipliers[this.currentIconPack] || 1.0;
         
@@ -4210,7 +4233,7 @@ class NumberConnectionGame {
                         // Recalculate multipliers for display
                         const gameModeMultiplier = this.gameModeMultipliers[this.gameMode] || 1.0;
                         const aiDifficultyMultiplier = this.aiDifficultyMultipliers[this.aiDifficulty] || 1.0;
-                        const doublePointsMultiplier = this.doublePointsActive ? 2.0 : 0;
+                        const doublePointsMultiplier = this.doublePointsActive ? 1.0 : 0; // Changed from 2.0 to 1.0
                         const baseMultiplierBonus = (this.shop.owned.baseMultiplier || 0) * 0.1;
                         const iconPackMultiplier = IconPackMultipliers[this.currentIconPack] || 1.0;
                     
@@ -4396,6 +4419,17 @@ class NumberConnectionGame {
 
     // Load a custom level from the level editor
     loadCustomLevel(levelData) {
+        // Store original settings before applying custom level
+        this.originalSettings = {
+            gridSize: this.gridSize,
+            width: this.width,
+            height: this.height,
+            gameMode: this.gameMode,
+            aiDifficulty: this.aiDifficulty,
+            iconPack: this.currentIconPack,
+            restrictions: { ...this.restrictions }
+        };
+        
         // Set board size (custom levels use width/height but game uses gridSize)
         this.gridSize = levelData.width; // Assume square grid from level editor
         this.width = levelData.width;
@@ -4415,20 +4449,35 @@ class NumberConnectionGame {
             this.restrictions.survival = levelData.restrictions.survival || false;
             this.restrictions.scummySequences = levelData.restrictions.scummySequences || false;
             this.restrictions.gloriousZeros = levelData.restrictions.gloriousZeros || false;
+            this.restrictions.maintained = levelData.restrictions.maintained || false;
+            this.restrictions.singlePath = levelData.restrictions.singlePath || false;
+            this.restrictions.aiVsAi = levelData.restrictions.aiVsAi || false;
         }
         
         // Set AI difficulty
         if (levelData.aiDifficulty) {
             this.aiDifficulty = levelData.aiDifficulty;
+            this.saveDifficulty();
             const aiSelect = document.getElementById('aiDifficultySelect');
             if (aiSelect) {
                 aiSelect.value = levelData.aiDifficulty;
             }
         }
         
+        // Set game mode
+        if (levelData.gameMode) {
+            this.gameMode = levelData.gameMode;
+            this.saveGameMode(levelData.gameMode);
+            const gamemodeSelect = document.getElementById('gamemodeSelect');
+            if (gamemodeSelect) {
+                gamemodeSelect.value = levelData.gameMode;
+            }
+        }
+        
         // Apply icon pack if specified
         if (levelData.iconPack) {
             this.currentIconPack = levelData.iconPack;
+            this.iconPack = levelData.iconPack;
             document.body.className = document.body.className.replace(/icon-\w+/g, '');
             if (levelData.iconPack !== 'default') {
                 document.body.classList.add(`icon-${levelData.iconPack}`);
@@ -4454,6 +4503,9 @@ class NumberConnectionGame {
         // Start new game with custom level (don't have isPlayingCustomLevel set yet!)
         this.newGame();
         
+        // Apply responsive cell sizing for irregular board dimensions
+        this.applyResponsiveCellSizing();
+        
         // NOW set that we're playing a custom level (after newGame won't clear it)
         this.isPlayingCustomLevel = true;
         
@@ -4468,7 +4520,122 @@ class NumberConnectionGame {
     clearCustomLevel() {
         this.isPlayingCustomLevel = false;
         this.customLevelMultiplier = 1;
+        this.customLevelLoaded = false;
+        this.customPaths = [];
+        
+        // Restore original settings if they were saved
+        if (this.originalSettings) {
+            this.gridSize = this.originalSettings.gridSize;
+            this.width = this.originalSettings.width;
+            this.height = this.originalSettings.height;
+            this.totalCells = this.gridSize * this.gridSize;
+            this.deckSize = this.totalCells;
+            this.gameMode = this.originalSettings.gameMode;
+            this.aiDifficulty = this.originalSettings.aiDifficulty;
+            this.currentIconPack = this.originalSettings.iconPack;
+            this.iconPack = this.originalSettings.iconPack;
+            this.restrictions = { ...this.originalSettings.restrictions };
+            
+            // Save restored settings to localStorage
+            this.saveBoardSize();
+            this.saveGameMode(this.gameMode);
+            this.saveDifficulty();
+            this.saveIconPack(this.currentIconPack);
+            this.saveRestrictions();
+            
+            // Update UI selects
+            const sizeSelect = document.getElementById('boardSizeSelect');
+            if (sizeSelect) {
+                sizeSelect.value = String(this.gridSize);
+            }
+            
+            const gamemodeSelect = document.getElementById('gamemodeSelect');
+            if (gamemodeSelect) {
+                gamemodeSelect.value = this.gameMode;
+            }
+            
+            const aiSelect = document.getElementById('aiDifficultySelect');
+            if (aiSelect) {
+                aiSelect.value = this.aiDifficulty;
+            }
+            
+            // Restore icon pack
+            document.body.className = document.body.className.replace(/icon-\w+/g, '');
+            if (this.currentIconPack !== 'default') {
+                document.body.classList.add(`icon-${this.currentIconPack}`);
+            }
+            
+            this.originalSettings = null;
+        } else {
+            // Fallback: Reset board size to the one selected in settings
+            const sizeSelect = document.getElementById('boardSizeSelect');
+            if (sizeSelect) {
+                const selectedSize = parseInt(sizeSelect.value);
+                this.gridSize = selectedSize;
+                this.width = selectedSize;
+                this.height = selectedSize;
+                this.totalCells = selectedSize * selectedSize;
+                this.deckSize = this.totalCells;
+            }
+        }
+        
         enableSettingsAfterCustomLevel();
+    }
+    
+    applyResponsiveCellSizing() {
+        // Calculate appropriate cell size based on board dimensions
+        const mapGrid = document.querySelector('.map-grid');
+        if (!mapGrid) return;
+        
+        // Get the fixed container dimensions
+        const mapWrapper = document.querySelector('.map-wrapper');
+        if (!mapWrapper) return;
+        
+        // FIXED: Use fixed container size (500x500 from CSS)
+        const containerWidth = 500;
+        const containerHeight = 500;
+        
+        // Calculate gap based on grid size (smaller gap for larger grids)
+        const gap = this.width >= 7 || this.height >= 7 ? 4 : 8;
+        
+        // Calculate cell dimensions to fit within container
+        const availableWidth = containerWidth - (gap * (this.width - 1));
+        const availableHeight = containerHeight - (gap * (this.height - 1));
+        
+        const cellWidth = Math.floor(availableWidth / this.width);
+        const cellHeight = Math.floor(availableHeight / this.height);
+        
+        // Apply maximum size caps
+        const maxCellSize = 80;
+        const finalCellWidth = Math.min(cellWidth, maxCellSize);
+        const finalCellHeight = Math.min(cellHeight, maxCellSize);
+        
+        // Calculate font size based on smaller dimension
+        const fontSize = Math.floor(Math.min(finalCellWidth, finalCellHeight) * 0.5);
+        
+        // CRITICAL: Set grid-template-columns to define the grid layout for custom dimensions
+        mapGrid.style.gridTemplateColumns = `repeat(${this.width}, ${finalCellWidth}px)`;
+        mapGrid.style.display = 'grid';
+        
+        // Apply custom sizing to all cells
+        const cells = mapGrid.querySelectorAll('.map-cell');
+        cells.forEach(cell => {
+            cell.style.width = `${finalCellWidth}px`;
+            cell.style.height = `${finalCellHeight}px`;
+            cell.style.fontSize = `${fontSize}px`;
+        });
+        
+        // Update grid gap
+        mapGrid.style.gap = `${gap}px`;
+        
+        // Center the grid within the container if it's smaller than container
+        const totalWidth = (finalCellWidth * this.width) + (gap * (this.width - 1));
+        const totalHeight = (finalCellHeight * this.height) + (gap * (this.height - 1));
+        
+        if (totalWidth < containerWidth || totalHeight < containerHeight) {
+            mapGrid.style.justifyContent = 'center';
+            mapGrid.style.alignContent = 'center';
+        }
     }
 }
 
@@ -4478,7 +4645,7 @@ function showShop() {
     const modal = document.getElementById('shopModal');
     
     // Update cash display
-    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
     updateFloatingPointsBadges();
     
     // Render shop items
@@ -4574,15 +4741,17 @@ function renderShopItems() {
     permanentPowerups.forEach(powerup => {
         const price = powerup.basePrice * 100;
         const currentLevel = game.shop.owned.permanentPowerups?.[powerup.id] || 0;
+        const maxCap = powerup.id === 'doublePoints' ? 1 : 99;
+        const atCap = currentLevel >= maxCap;
         const div = document.createElement('div');
-        div.className = 'shop-item';
+        div.className = atCap ? 'shop-item owned' : 'shop-item';
         div.innerHTML = `
             <div class="shop-item-name">${powerup.icon} ${powerup.name}</div>
-            <div class="shop-item-desc">Current: +${currentLevel} per game</div>
+            <div class="shop-item-desc">Current: +${currentLevel} per game ${atCap ? '(MAX)' : `(max ${maxCap})`}</div>
             <div class="shop-item-price">${price} pts</div>
             <button onclick="buyPermanentPowerup('${powerup.id}', ${price})" 
-                    ${game.shop.points < price || game.restrictions.survival ? 'disabled' : ''}>
-                Buy +1
+                    ${game.shop.points < price || game.restrictions.survival || atCap ? 'disabled' : ''}>
+                ${atCap ? '✓ Maxed' : 'Buy +1'}
             </button>
         `;
         permPowerupContainer.appendChild(div);
@@ -4800,6 +4969,8 @@ function renderShopItems() {
         baseMultiplierContainer.innerHTML = '';
         
         const currentLevel = game.shop.owned.baseMultiplier || 0;
+        const maxCap = 50;
+        const atCap = currentLevel >= maxCap;
         const basePrice = 100;
         const priceIncrease = 50;
         const nextPrice = basePrice + (currentLevel * priceIncrease);
@@ -4807,17 +4978,28 @@ function renderShopItems() {
         const nextBonus = (currentLevel + 1) * 0.1;
         
         const div = document.createElement('div');
-        div.className = 'shop-item';
-        div.innerHTML = `
-            <div class="shop-item-name">⭐ Base Multiplier</div>
-            <div class="shop-item-desc">Current: +${currentBonus.toFixed(1)}x | Next: +${nextBonus.toFixed(1)}x</div>
-            <div class="shop-item-multiplier">Level ${currentLevel} → ${currentLevel + 1}</div>
-            <div class="shop-item-price">${nextPrice} pts</div>
-            <button onclick="buyBaseMultiplier(${nextPrice})" 
-                    ${game.shop.points < nextPrice ? 'disabled' : ''}>
-                Buy Upgrade
-            </button>
-        `;
+        div.className = atCap ? 'shop-item owned' : 'shop-item';
+        
+        if (atCap) {
+            div.innerHTML = `
+                <div class="shop-item-name">⭐ Base Multiplier</div>
+                <div class="shop-item-desc">Current: +${currentBonus.toFixed(1)}x (MAX)</div>
+                <div class="shop-item-multiplier">Level ${currentLevel} / ${maxCap}</div>
+                <div class="shop-item-price">Maxed Out</div>
+                <button disabled>✓ Maxed</button>
+            `;
+        } else {
+            div.innerHTML = `
+                <div class="shop-item-name">⭐ Base Multiplier</div>
+                <div class="shop-item-desc">Current: +${currentBonus.toFixed(1)}x | Next: +${nextBonus.toFixed(1)}x</div>
+                <div class="shop-item-multiplier">Level ${currentLevel} → ${currentLevel + 1} (max ${maxCap})</div>
+                <div class="shop-item-price">${nextPrice} pts</div>
+                <button onclick="buyBaseMultiplier(${nextPrice})" 
+                        ${game.shop.points < nextPrice ? 'disabled' : ''}>
+                    Buy Upgrade
+                </button>
+            `;
+        }
         baseMultiplierContainer.appendChild(div);
     }
 }
@@ -4835,6 +5017,7 @@ function buyPowerup(type, price) {
     
     game.shop.points -= price;
     game.saveShop();
+    updateFloatingPointsBadges();
     
     // FIXED: Add to both available and consumable
     switch(type) {
@@ -4867,7 +5050,7 @@ function buyPowerup(type, price) {
     game.saveShopConsumables(); // FIXED
     game.updatePowerupDisplay();
     game.updateStatsDisplay();
-    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
     renderShopItems();
     
     SoundEffects.playPowerup();
@@ -4875,12 +5058,12 @@ function buyPowerup(type, price) {
 
 function buyPermanentPowerup(type, price) {
     if (game.shop.points < price) {
-        alert('Not enough points!');
+        game.showMessage('❌ Not enough points!');
         return;
     }
     
     if (game.restrictions.survival) {
-        alert('Cannot buy power-ups in Survival mode!');
+        game.showMessage('❌ Cannot buy power-ups in Survival mode!');
         return;
     }
     
@@ -4893,6 +5076,17 @@ function buyPermanentPowerup(type, price) {
             pickCard: 0,
             doublePoints: 0 // NEW
         };
+    }
+    
+    // Check purchase caps
+    const currentCount = game.shop.owned.permanentPowerups[type] || 0;
+    if (type === 'doublePoints' && currentCount >= 1) {
+        game.showMessage('❌ You already own the maximum of this powerup!');
+        return;
+    }
+    if (type !== 'doublePoints' && currentCount >= 99) {
+        game.showMessage('❌ You already own the maximum (99) of this powerup!');
+        return;
     }
 
     game.shop.points -= price;
@@ -4924,20 +5118,27 @@ function buyPermanentPowerup(type, price) {
     game.savePowerupState(); // NEW
     game.updatePowerupDisplay();
     game.updateStatsDisplay();
-    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+    updateFloatingPointsBadges();
     renderShopItems();
     
     SoundEffects.playUnlock();
-    alert(`✨ Permanent bonus purchased! You'll now start every game with +${game.shop.owned.permanentPowerups[type]} of this power-up!`);
+    game.showMessage(`✨ Permanent bonus purchased! You'll now start every game with +${game.shop.owned.permanentPowerups[type]} of this power-up!`);
 }
 function buyBaseMultiplier(price) {
     if (game.shop.points < price) {
-        alert('Not enough points!');
+        game.showMessage('❌ Not enough points!');
         return;
     }
     
     if (!game.shop.owned.baseMultiplier) {
         game.shop.owned.baseMultiplier = 0;
+    }
+    
+    // Check if at max cap (50 purchases = 5.0x)
+    if (game.shop.owned.baseMultiplier >= 50) {
+        game.showMessage('❌ Base Multiplier is already at maximum (5.0x)!');
+        return;
     }
     
     game.shop.points -= price;
@@ -4946,14 +5147,15 @@ function buyBaseMultiplier(price) {
     game.saveShop();
     game.updateMultiplierDisplay();
     game.updateStatsDisplay();
-    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+    updateFloatingPointsBadges();
     renderShopItems();
     
     const newLevel = game.shop.owned.baseMultiplier;
     const newBonus = newLevel * 0.1;
     
     SoundEffects.playUnlock();
-    alert(`✨ Base Multiplier upgraded to Level ${newLevel}!\nYou now get +${newBonus.toFixed(1)}x on ALL pts earnings!`);
+    game.showMessage(`⭐ Base Multiplier upgraded to Level ${newLevel}! You now get +${newBonus.toFixed(1)}x on ALL pts earnings!`);
 }
 
 function buyPermanent(type, value, price) {
@@ -5022,10 +5224,11 @@ function buyPermanent(type, value, price) {
     
     game.shop.points -= price;
     game.saveShop();
+    updateFloatingPointsBadges();
     game.updateStatsDisplay();
     game.updateRestrictionsUI(); // Update restrictions visibility in settings
 
-    document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
+    document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
 
     game.updateSettingsUI();
     renderShopItems();
@@ -5341,8 +5544,9 @@ function buyCasinoGame(gameId) {
         owned.push(gameId);
         saveCasinoOwnedGames(owned);
         game.saveShop();
+        updateFloatingPointsBadges();
         updateCasinoUI();
-        document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+        document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
         SoundEffects.playUnlock();
         return true;
     }
@@ -5409,7 +5613,7 @@ function openGambling() {
     SoundEffects.playButton();
     const modal = document.getElementById('gamblingModal');
     modal.classList.add('show');
-    document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+    document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
     updateFloatingPointsBadges();
     document.getElementById('gamblingResult').textContent = '';
     document.getElementById('gamblingResult').className = 'gambling-result';
@@ -5422,7 +5626,7 @@ function openGambling() {
 }
 
 function updateFloatingPointsBadges() {
-    const points = Math.floor(game.shop.points);
+    const points = formatPoints(game.shop.points);
     const casinoBadge = document.getElementById('casinoPointsBadge');
     const shopBadge = document.getElementById('shopPointsBadge');
     const questsBadge = document.getElementById('questsPointsBadge');
@@ -5552,7 +5756,7 @@ function backToCasinoMenu() {
     isDiceRolling = false;
     
     // Update points display
-    document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+    document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
     updateFloatingPointsBadges();
 }
 
@@ -5564,18 +5768,41 @@ document.getElementById('gamblingModal').addEventListener('click', (e) => {
 });
 
 function setMaxBet(inputId) {
-    document.getElementById(inputId).value = Math.floor(game.shop.points);
+    const maxAllowed = Math.min(game.shop.points, 1000);
+    const rounded = Math.round(maxAllowed * 10) / 10;
+    document.getElementById(inputId).value = rounded.toFixed(1);
+}
+
+function setHalfBet(inputId) {
+    const halfAmount = Math.min(game.shop.points / 2, 500);
+    const rounded = Math.round(halfAmount * 10) / 10;
+    document.getElementById(inputId).value = rounded.toFixed(1);
 }
 
 function flipCoin(choice) {
     if (isFlipping) return;
     
     const betInput = document.getElementById('betAmount');
-    const bet = parseInt(betInput.value) || 0;
+    let bet = parseFloat(betInput.value) || 0;
     
+    // Round to nearest integer
+    bet = Math.round(bet);
+    
+    // Enforce limits
     if (bet <= 0) {
         document.getElementById('gamblingResult').textContent = '❌ Enter a valid bet amount!';
         document.getElementById('gamblingResult').className = 'gambling-result lose';
+        return;
+    }
+    
+    if (bet > 1000) {
+        bet = 1000;
+        betInput.value = '1000';
+        document.getElementById('gamblingResult').textContent = '⚠️ Maximum bet is 1000 points!';
+        document.getElementById('gamblingResult').className = 'gambling-result';
+        setTimeout(() => {
+            document.getElementById('gamblingResult').textContent = '';
+        }, 2000);
         return;
     }
     
@@ -5586,6 +5813,9 @@ function flipCoin(choice) {
     }
     
     isFlipping = true;
+    
+    // Update floating points immediately after deducting bet
+    updateFloatingPointsBadges();
     
     // Disable buttons during flip
     document.getElementById('headsBtn').disabled = true;
@@ -5620,7 +5850,8 @@ function flipCoin(choice) {
     setTimeout(() => {
         if (won) {
             const winnings = bet * 2;
-            game.shop.points += bet; // Net gain is 1x bet (already had the bet, now have 2x)
+            game.shop.points += winnings; // Add back full winnings (bet was already deducted)
+            game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
             resultDiv.textContent = `🎉 ${result.toUpperCase()}! You won ${winnings} points!`;
             resultDiv.className = 'gambling-result win';
             SoundEffects.playCasinoWin();
@@ -5628,7 +5859,8 @@ function flipCoin(choice) {
             trackQuestProgress('casinowin', 1);
             trackQuestProgress('highbet', bet); // Track high bet
         } else {
-            game.shop.points -= bet;
+            // Bet was already deducted, nothing to do
+            game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
             resultDiv.textContent = `💔 ${result.toUpperCase()}! You lost ${bet} points!`;
             resultDiv.className = 'gambling-result lose';
             SoundEffects.playCasinoLose();
@@ -5636,11 +5868,11 @@ function flipCoin(choice) {
         }
         
         // Update displays
-        const currentPoints = Math.floor(game.shop.points);
-        document.getElementById('gamblingPointsDisplay').textContent = currentPoints;
+        document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
         game.saveShop();
-        document.getElementById('shopPointsDisplay').textContent = currentPoints;
-        document.getElementById('shopPointsStat').textContent = currentPoints;
+        updateFloatingPointsBadges();
+        document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+        document.getElementById('shopPointsStat').textContent = formatPoints(game.shop.points);
         
         // Re-enable buttons
         document.getElementById('headsBtn').disabled = false;
@@ -5708,7 +5940,9 @@ function spinSlots() {
     
     // Deduct cost
     game.shop.points -= 1;
+    game.saveShop();
     SoundEffects.playBetPlace();
+    updateFloatingPointsBadges();
     
     // Disable buttons
     document.getElementById('spinBtn').disabled = true;
@@ -5765,8 +5999,10 @@ function spinSlots() {
         
         if (isJackpot) {
             // JACKPOT! All three match
-            game.shop.points += 77.7;
-            resultDiv.textContent = `🎰 JACKPOT! ${results[0]}${results[1]}${results[2]} - You won 77.7 points!`;
+            const winnings = 77.7;
+            game.shop.points += winnings; // Add full winnings (1 pt cost was already deducted)
+            game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
+            resultDiv.textContent = `🎰 JACKPOT! ${results[0]}${results[1]}${results[2]} - You won ${winnings} points!`;
             resultDiv.className = 'gambling-result win';
             SoundEffects.playJackpot();
             
@@ -5777,7 +6013,8 @@ function spinSlots() {
             trackQuestProgress('casinowin', 1);
             trackQuestProgress('slotsjackpot', 1);
         } else {
-            // No win
+            // No win - cost already deducted
+            game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
             resultDiv.textContent = `${results[0]}${results[1]}${results[2]} - No match. Try again!`;
             resultDiv.className = 'gambling-result lose';
             SoundEffects.playCasinoLose();
@@ -5785,11 +6022,11 @@ function spinSlots() {
         }
         
         // Update displays
-        const currentPoints = game.shop.points;
-        document.getElementById('gamblingPointsDisplay').textContent = currentPoints.toFixed(1);
+        document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
         game.saveShop();
-        document.getElementById('shopPointsDisplay').textContent = currentPoints.toFixed(1);
-        document.getElementById('shopPointsStat').textContent = Math.floor(currentPoints);
+        updateFloatingPointsBadges();
+        document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+        document.getElementById('shopPointsStat').textContent = formatPoints(game.shop.points);
         
         isSpinning = false;
         updateSlotsUI();
@@ -5828,10 +6065,10 @@ function upgradeSlots() {
     
     // Update displays
     const currentPoints = game.shop.points;
-    document.getElementById('gamblingPointsDisplay').textContent = currentPoints.toFixed(1);
+    document.getElementById('gamblingPointsDisplay').textContent = formatPoints(currentPoints);
     game.saveShop();
-    document.getElementById('shopPointsDisplay').textContent = currentPoints.toFixed(1);
-    document.getElementById('shopPointsStat').textContent = Math.floor(currentPoints);
+    document.getElementById('shopPointsDisplay').textContent = formatPoints(currentPoints);
+    document.getElementById('shopPointsStat').textContent = formatPoints(currentPoints);
     
     updateSlotsUI();
 }
@@ -5890,6 +6127,11 @@ function guessHigherLower(guess) {
     // Play bet sound
     SoundEffects.playBetPlace();
     
+    // Deduct bet and update floating points
+    game.shop.points -= bet;
+    game.saveShop();
+    updateFloatingPointsBadges();
+    
     // Reveal the hidden number
     document.querySelector('#hlHiddenCard .hl-question').style.display = 'none';
     document.getElementById('hlHiddenNumber').style.display = 'block';
@@ -5904,14 +6146,16 @@ function guessHigherLower(guess) {
     setTimeout(() => {
         if (won) {
             const winnings = bet * 1.5;
-            game.shop.points += bet * 0.5; // Net gain is 0.5x bet (already had bet, now have 1.5x)
+            game.shop.points += winnings; // Add back full winnings (bet was already deducted)
+            game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
             resultDiv.textContent = `🎉 Correct! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You won ${winnings} points!`;
             resultDiv.className = 'gambling-result win';
             SoundEffects.playCasinoWin();
             trackQuestProgress('casinowin', 1);
             trackQuestProgress('highbet', bet);
         } else {
-            game.shop.points -= bet;
+            // Bet was already deducted, nothing to do
+            game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
             resultDiv.textContent = `💔 Wrong! Hidden was ${hlHiddenNumber} (${isHigher ? 'HIGHER' : 'LOWER'}). You lost ${bet} points!`;
             resultDiv.className = 'gambling-result lose';
             SoundEffects.playCasinoLose();
@@ -5919,11 +6163,11 @@ function guessHigherLower(guess) {
         }
         
         // Update displays
-        const currentPoints = Math.floor(game.shop.points);
-        document.getElementById('gamblingPointsDisplay').textContent = currentPoints;
+        document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
         game.saveShop();
-        document.getElementById('shopPointsDisplay').textContent = currentPoints;
-        document.getElementById('shopPointsStat').textContent = currentPoints;
+        updateFloatingPointsBadges();
+        document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+        document.getElementById('shopPointsStat').textContent = formatPoints(game.shop.points);
         
         // Update bet input if it exceeds current points
         if (parseInt(betInput.value) > game.shop.points) {
@@ -6085,7 +6329,9 @@ function startBlackjack() {
     // Deduct bet
     bjCurrentBet = bet;
     game.shop.points -= bet;
+    game.saveShop();
     SoundEffects.playBetPlace();
+    updateFloatingPointsBadges();
     
     isBlackjackPlaying = true;
     bjPlayerStood = false;
@@ -6113,7 +6359,7 @@ function startBlackjack() {
     updateBlackjackTurnIndicator();
     
     // Update points display
-    document.getElementById('gamblingPointsDisplay').textContent = game.shop.points.toFixed(1);
+    document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
     
     // Check for immediate blackjack (21 with 2 cards)
     bjPlayerTotal = calculateBestPlayerTotal(bjPlayerCards);
@@ -6300,18 +6546,23 @@ function endBlackjack(reason) {
         } else {
             // Push - return bet
             game.shop.points += bjCurrentBet;
+            game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
             message = `🤝 Push! Both have ${bjPlayerTotal}. Bet returned.`;
             SoundEffects.playButton();
         }
     }
     
     if (won) {
-        game.shop.points += bjCurrentBet * 2; // Return bet + winnings
+        const winnings = bjCurrentBet * 2;
+        game.shop.points += winnings; // Add full winnings (bet was already deducted in startBlackjack)
+        game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
         resultDiv.className = 'gambling-result win';
         SoundEffects.playCasinoWin();
         trackQuestProgress('casinowin', 1);
         trackQuestProgress('highbet', bjCurrentBet);
     } else if (reason === 'bust' || bjPlayerTotal < bjDealerTotal) {
+        // Bet was already deducted, nothing to add back
+        game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
         resultDiv.className = 'gambling-result lose';
         if (reason === 'bust') trackQuestProgress('casinolose', 1);
     }
@@ -6319,11 +6570,11 @@ function endBlackjack(reason) {
     resultDiv.textContent = message;
     
     // Update displays
-    const currentPoints = game.shop.points;
-    document.getElementById('gamblingPointsDisplay').textContent = currentPoints.toFixed(1);
+    document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
     game.saveShop();
-    document.getElementById('shopPointsDisplay').textContent = currentPoints.toFixed(1);
-    document.getElementById('shopPointsStat').textContent = currentPoints.toFixed(1);
+    updateFloatingPointsBadges();
+    document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+    document.getElementById('shopPointsStat').textContent = formatPoints(game.shop.points);
     
     // Reset after delay
     setTimeout(() => {
@@ -6395,8 +6646,9 @@ function playDiceDuel() {
     
     // Deduct bet
     game.shop.points -= bet;
-    document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+    document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
     game.saveShop();
+    updateFloatingPointsBadges();
     
     isDiceRolling = true;
     document.getElementById('diceRollBtn').disabled = true;
@@ -6471,14 +6723,16 @@ function playDiceDuel() {
                             if (playerTotal > dealerTotal) {
                                 // Player wins
                                 const winnings = bet * 2;
-                                game.shop.points += winnings;
+                                game.shop.points += winnings; // Add full winnings (bet was already deducted)
+                                game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
                                 resultDiv.textContent = `🎉 You win! ${playerTotal} beats ${dealerTotal}! +${winnings} points!`;
                                 resultDiv.className = 'gambling-result win';
                                 SoundEffects.playCasinoWin();
                                 trackQuestProgress('casinowin', 1);
                                 trackQuestProgress('highbet', bet);
                             } else if (playerTotal < dealerTotal) {
-                                // Dealer wins
+                                // Dealer wins - bet already deducted
+                                game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
                                 resultDiv.textContent = `💔 Dealer wins! ${dealerTotal} beats your ${playerTotal}. Lost ${bet} points.`;
                                 resultDiv.className = 'gambling-result lose';
                                 SoundEffects.playCasinoLose();
@@ -6486,16 +6740,18 @@ function playDiceDuel() {
                             } else {
                                 // Tie - return bet
                                 game.shop.points += bet;
+                                game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
                                 resultDiv.textContent = `🤝 Tie! Both rolled ${playerTotal}. Bet returned.`;
                                 resultDiv.className = 'gambling-result';
                                 SoundEffects.playButton();
                             }
                             
                             // Update displays
-                            document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+                            document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
                             game.saveShop();
-                            document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
-                            document.getElementById('shopPointsStat').textContent = game.shop.points.toFixed(1);
+                            updateFloatingPointsBadges();
+                            document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+                            document.getElementById('shopPointsStat').textContent = formatPoints(game.shop.points);
                             
                             // Reset after delay
                             setTimeout(() => {
@@ -6631,8 +6887,9 @@ function spinRoulette() {
     
     // Deduct bet
     game.shop.points -= bet;
-    document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+    document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
     game.saveShop();
+    updateFloatingPointsBadges();
     
     isRouletteSpinning = true;
     document.getElementById('rouletteSpinBtn').disabled = true;
@@ -6705,13 +6962,16 @@ function spinRoulette() {
             setTimeout(() => {
                 if (won) {
                     const winnings = bet * multiplier;
-                    game.shop.points += winnings;
+                    game.shop.points += winnings; // Add full winnings (bet was already deducted)
+                    game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
                     resultDiv.textContent = `🎉 ${colorEmoji} ${result}! You win ${multiplier}x! +${winnings} points!`;
                     resultDiv.className = 'gambling-result win';
                     SoundEffects.playCasinoWin();
                     trackQuestProgress('casinowin', 1);
                     trackQuestProgress('highbet', bet);
                 } else {
+                    // Bet was already deducted, nothing to do
+                    game.shop.points = Math.round(game.shop.points * 10) / 10; // Round to tenths
                     const betTypeText = rouletteBetType === 'color' ? rouletteColorChoice : `number ${rouletteNumberChoice}`;
                     resultDiv.textContent = `💔 ${colorEmoji} ${result}! You bet on ${betTypeText}. Lost ${bet} points.`;
                     resultDiv.className = 'gambling-result lose';
@@ -6720,10 +6980,11 @@ function spinRoulette() {
                 }
                 
                 // Update displays
-                document.getElementById('gamblingPointsDisplay').textContent = Math.floor(game.shop.points);
+                document.getElementById('gamblingPointsDisplay').textContent = formatPoints(game.shop.points);
                 game.saveShop();
-                document.getElementById('shopPointsDisplay').textContent = game.shop.points.toFixed(1);
-                document.getElementById('shopPointsStat').textContent = game.shop.points.toFixed(1);
+                updateFloatingPointsBadges();
+                document.getElementById('shopPointsDisplay').textContent = formatPoints(game.shop.points);
+                document.getElementById('shopPointsStat').textContent = formatPoints(game.shop.points);
             
                 // Reset after delay
                 setTimeout(() => {
@@ -6923,7 +7184,7 @@ function openCreatorCenter() {
     SoundEffects.playButton();
     
     // Update displays
-    document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+    document.getElementById('creatorShopPoints').textContent = formatPoints(game.shop.points);
     document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
     
     // Show appropriate panel
@@ -6986,7 +7247,7 @@ function setupCreatorTitleSecret() {
             saveCreatorData();
             
             // Update displays
-            document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+            document.getElementById('creatorShopPoints').textContent = formatPoints(game.shop.points);
             document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
             updateFloatingPointsBadges();
             
@@ -7026,7 +7287,7 @@ function setupEditorTitleSecret() {
             saveCreatorData();
             
             // Update displays
-            document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+            document.getElementById('creatorShopPoints').textContent = formatPoints(game.shop.points);
             document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
             updateFloatingPointsBadges();
             
@@ -7056,7 +7317,7 @@ function tryUnlockCreatorCenter() {
         
         document.getElementById('creatorLockPanel').style.display = 'none';
         document.getElementById('creatorFeatures').style.display = 'block';
-        document.getElementById('creatorShopPoints').textContent = Math.floor(game.shop.points);
+        document.getElementById('creatorShopPoints').textContent = formatPoints(game.shop.points);
         document.getElementById('creatorCreatorPoints').textContent = creatorPoints;
         
         // Initialize level editor
@@ -7099,7 +7360,7 @@ function renderQuests() {
         return `
             <div class="quest-item ${isComplete ? 'completed' : ''}">
                 <div class="quest-info">
-                    <div class="quest-title">${quest.title}</div>
+                    <div class="quest-title">${quest.title} <span style="color: #FFD700; font-weight: bold;">(${quest.reward}⭐)</span></div>
                     <div class="quest-progress-text">${quest.description} (${progress}/${quest.target})</div>
                     <div class="quest-progress-bar">
                         <div class="quest-progress-fill" style="width: ${percentage}%"></div>
@@ -7108,7 +7369,7 @@ function renderQuests() {
                 <button class="quest-claim-btn ${isComplete ? 'ready' : ''}" 
                         onclick="claimQuest(${index})" 
                         ${!isComplete ? 'disabled' : ''}>
-                    ${isComplete ? '⭐ Claim' : 'In Progress'}
+                    ${isComplete ? `⭐ Claim ${quest.reward}⭐` : 'In Progress'}
                 </button>
             </div>
         `;
@@ -7226,6 +7487,12 @@ function trackQuestProgress(type, amount = 1) {
     }
     
     saveCreatorData();
+    
+    // Re-render quests if modal is open to update progress bars
+    const questsModal = document.getElementById('questsModal');
+    if (questsModal && questsModal.classList.contains('show')) {
+        renderQuests();
+    }
 }
 
 // Initialize on load

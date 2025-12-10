@@ -387,7 +387,8 @@
                         
                         <div class="bet-section">
                             <label for="betAmount">Bet Amount:</label>
-                            <input type="number" id="betAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <input type="number" id="betAmount" min="1" max="1000" step="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setHalfBet('betAmount')" class="info" style="padding: 8px 12px;">Half</button>
                             <button onclick="setMaxBet('betAmount')" class="warning" style="padding: 8px 12px;">Max</button>
                         </div>
                         
@@ -475,7 +476,8 @@
                         
                         <div class="bet-section">
                             <label for="hlBetAmount">Bet Amount:</label>
-                            <input type="number" id="hlBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <input type="number" id="hlBetAmount" min="1" max="1000" step="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setHalfBet('hlBetAmount')" class="info" style="padding: 8px 12px;">Half</button>
                             <button onclick="setMaxBet('hlBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
                         </div>
                         
@@ -514,7 +516,8 @@
                         
                         <div class="bet-section" id="bjBetSection">
                             <label for="bjBetAmount">Bet Amount:</label>
-                            <input type="number" id="bjBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <input type="number" id="bjBetAmount" min="1" max="1000" step="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setHalfBet('bjBetAmount')" class="info" style="padding: 8px 12px;">Half</button>
                             <button onclick="setMaxBet('bjBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
                         </div>
                         
@@ -573,7 +576,8 @@
                         
                         <div class="bet-section" id="diceBetSection">
                             <label for="diceBetAmount">Bet Amount:</label>
-                            <input type="number" id="diceBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <input type="number" id="diceBetAmount" min="1" max="1000" step="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                            <button onclick="setHalfBet('diceBetAmount')" class="info" style="padding: 8px 12px;">Half</button>
                             <button onclick="setMaxBet('diceBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
                         </div>
                         
@@ -639,7 +643,8 @@
                             
                             <div class="bet-section" id="rouletteBetSection">
                                 <label for="rouletteBetAmount">Bet Amount:</label>
-                                <input type="number" id="rouletteBetAmount" min="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                                <input type="number" id="rouletteBetAmount" min="1" max="1000" step="1" value="10" style="width: 80px; padding: 8px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px;">
+                                <button onclick="setHalfBet('rouletteBetAmount')" class="info" style="padding: 8px 12px;">Half</button>
                                 <button onclick="setMaxBet('rouletteBetAmount')" class="warning" style="padding: 8px 12px;">Max</button>
                             </div>
                         </div>
